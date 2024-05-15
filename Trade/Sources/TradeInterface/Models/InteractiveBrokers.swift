@@ -30,11 +30,11 @@ public extension IBContract {
 
 @Observable
 class InteractiveBrokers {
+    var onBarUpdate: ((_ requestID: Int, _ bars: [IBPriceBar]) -> Void)?
+    
     private let client = IBClient.live(id: 0, type: .gateway)
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: [String] = []
-    
-    var onBarUpdate: ((_ requestID: Int, _ bars: [IBPriceBar]) -> Void)?
     
     deinit {
         client.disconnect()
@@ -149,7 +149,12 @@ class InteractiveBrokers {
         for contract: IBContract
     ) throws -> Int {
         let requestID: Int = client.nextRequestID
-        try client.subscribeRealTimeBar(requestID, contract: contract, barSize: .fiveSeconds, barSource: .trades)
+        try client.subscribeRealTimeBar(
+            requestID,
+            contract: contract,
+            barSize: .fiveSeconds,
+            barSource: .trades
+        )
         return requestID
     }
     

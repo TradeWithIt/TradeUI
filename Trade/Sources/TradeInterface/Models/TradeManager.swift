@@ -51,7 +51,7 @@ struct Order {
     public func marketData(_ contract: Contract, interval: TimeInterval) throws -> Chart? {
         lock.withLockVoid {
             let runtime = Runtime(
-                symbol: contract.symbol,
+                symbol: contract.localSymbol ?? contract.symbol,
                 interval: interval
             )
             runtimes[runtime.id] = runtime

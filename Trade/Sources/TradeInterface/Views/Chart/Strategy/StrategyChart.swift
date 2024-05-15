@@ -1,20 +1,18 @@
 import SwiftUI
 import TradingStrategy
-import TradeWithIt
 
-public struct SupriseBarChart: View {
-    let runtime: Runtime
-    
-    private var strategy: any Strategy {
-        return SupriseBarStrategy(candles: runtime.candles)
-    }
-    
-    private var interval: TimeInterval {
-        return runtime.interval
-    }
+private enum Constants {
+    static let longTerm = 24
+    static let shortTerm = 8
+    static let phaseTerm = 4
+}
+
+public struct StrategyChart: View {
+    let strategy: any Strategy
+    let interval: TimeInterval
     
     private var candles: [any Klines] {
-        return runtime.candles
+        return strategy.candles
     }
     
     public var body: some View {
@@ -54,21 +52,21 @@ public struct SupriseBarChart: View {
                 // Simple Moving Average shorTermLength: Int = 8, longTermLength: Int = 24
                 
                 Path.quadCurvedPathWithPoints(
-                    points: candles.simpleMovingAverage(period: SupriseBarStrategy.Constants.shortTerm).enumerated()
+                    points: candles.simpleMovingAverage(period: Constants.shortTerm).enumerated()
                         .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
                     canvas: frame
                 )
                 .stroke(Color.purple)
                 
                 Path.quadCurvedPathWithPoints(
-                    points: candles.simpleMovingAverage(period: SupriseBarStrategy.Constants.longTerm).enumerated()
+                    points: candles.simpleMovingAverage(period: Constants.longTerm).enumerated()
                         .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
                     canvas: frame
                 )
                 .stroke(Color.indigo)
                 
                 Path.quadCurvedPathWithPoints(
-                    points: candles.simpleMovingAverage(period: SupriseBarStrategy.Constants.phaseTerm).enumerated()
+                    points: candles.simpleMovingAverage(period: Constants.phaseTerm).enumerated()
                         .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
                     canvas: frame
                 )
@@ -78,13 +76,13 @@ public struct SupriseBarChart: View {
                 // Phase and its type
                 
                 let phaseTypes = candles.detectPhaseTypes(
-                    forSimpleMovingAverage: candles.simpleMovingAverage(period: SupriseBarStrategy.Constants.phaseTerm),
+                    forSimpleMovingAverage: candles.simpleMovingAverage(period: Constants.phaseTerm),
                     inScale: scale,
                     canvasSize: frame.size,
-                    period: SupriseBarStrategy.Constants.phaseTerm / 2
+                    period: Constants.phaseTerm / 2
                 )
                 
-                let phases = phaseTypes.group(ignoringNoiseUpTo: SupriseBarStrategy.Constants.phaseTerm / 2)
+                let phases = phaseTypes.group(ignoringNoiseUpTo: Constants.phaseTerm / 2)
                 
                 ForEach(0 ..< phases.count, id: \.self) { i in
                     let minBar = candles[phases[i].range].min(by: { (a, b) -> Bool in
