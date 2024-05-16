@@ -13,15 +13,19 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/shial4/SwiftUIComponents.git", branch: "main"),
         .package(url: "https://github.com/TradeWithIt/Strategy.git", branch: "master"),
-        .package(url: "https://github.com/TradeWithIt/IBKit.git", branch: "feat/fix-handshake-race-condition"),
+        .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
         
         // MARK: Trading Strategy
         .package(url: "https://\(gitHubToken()):x-oauth-basic@github.com/TradeWithIt/TradeWithIt.git", branch: "master"),
+        
+        // MARK: Tools
+        .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0"))
     ],
     targets: [
         .target(
             name: "TradeInterface",
             dependencies: [
+                .product(name: "Collections", package: "swift-collections"),
                 .product(name: "SwiftUIComponents", package: "SwiftUIComponents"),
                 .product(name: "TradingStrategy", package: "Strategy"),
                 .product(name: "TradeWithIt", package: "TradeWithIt"),

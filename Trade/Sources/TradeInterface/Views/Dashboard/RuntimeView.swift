@@ -7,7 +7,7 @@ struct RuntimeView: View {
     
     var body: some View {
         StrategyChart(
-            strategy: SupriseBarStrategy(candles: runtime?.candles ?? []),
+            strategy: SupriseBarStrategy(candles: Array(runtime?.candles ?? [])),
             interval: runtime?.interval ?? 60
         )
     }

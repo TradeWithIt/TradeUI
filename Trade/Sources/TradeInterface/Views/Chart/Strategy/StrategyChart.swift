@@ -24,7 +24,7 @@ public struct StrategyChart: View {
     
     private var checkList: some View {
         HStack {
-            ForEach(Array(strategy.patterInformatioin.keys), id: \.self) { key in
+            ForEach(Array(strategy.patterInformatioin.keys.sorted()), id: \.self) { key in
                 checkItem(name: key) { strategy.patterInformatioin[key] ?? false }
             }
             Spacer()

@@ -1,7 +1,7 @@
 import Foundation
 import TradingStrategy
 
-struct Bar: Klines {
+struct Bar: Klines, Hashable {
     var timeOpen: TimeInterval
     var interval: TimeInterval
 
@@ -24,5 +24,15 @@ struct Bar: Klines {
         self.priceHigh = priceHigh
         self.priceLow = priceLow
         self.priceClose = priceClose
+    }
+}
+
+extension Bar {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(timeOpen)
+    }
+
+    static func == (lhs: Bar, rhs: Bar) -> Bool {
+        return lhs.timeOpen == rhs.timeOpen
     }
 }

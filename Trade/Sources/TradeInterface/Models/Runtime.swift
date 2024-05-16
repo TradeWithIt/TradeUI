@@ -1,11 +1,12 @@
 import Foundation
 import SwiftUI
 import TradingStrategy
+import OrderedCollections
 
 @Observable class Runtime: Identifiable {
     var symbol: Symbol
     var interval: TimeInterval
-    var candles: [Klines] = []
+    var candles: OrderedSet<Bar> = []
     
     private var isInTrade: Bool = false
     
@@ -17,42 +18,8 @@ import TradingStrategy
         self.symbol = symbol
         self.interval = interval
     }
-    
-    func updateCandles(bars: [Bar], ib: InteractiveBrokers) {
-        var candles = self.candles
 
-        for newBar in bars {
-            if let lastCandle = candles.last {
-                let nextIntervalStart = lastCandle.timeOpen + interval
-                if newBar.timeOpen < nextIntervalStart {
-                    // Aggregate this new bar with the last one
-                    candles[candles.count - 1] = aggregateBars(last: lastCandle, newBar: newBar)
-                } else if newBar.timeOpen == lastCandle.timeOpen {
-                    // Exact match in timeOpen, replace last candle
-                    candles[candles.count - 1] = newBar
-                } else {
-                    // New bar starts a new interval, append to the end
-                    candles.append(newBar)
-                    isInTrade = false
-                }
-            } else {
-                // If there are no candles yet, simply add the new bar
-                candles.append(newBar)
-                isInTrade = false
-            }
-        }
-
-        // Higher 15min frame or 4 bars if trading in over 15min resolution.
-        let minimumCandleCount = max(4, Int(900.0 / interval))
-        if candles.count > minimumCandleCount * 65 {
-            candles.removeFirst()
-        }
-
-        self.candles = candles
-    }
-
-    /// Helper function to aggregate a new bar with an existing last candle
-    func aggregateBars(last bar: any Klines, newBar: Bar) -> Bar {
+    func aggregateBars(last bar: Bar, newBar: Bar) -> Bar {
         var updatedBar = newBar
         updatedBar.timeOpen = bar.timeOpen
         
@@ -61,6 +28,34 @@ import TradingStrategy
         updatedBar.priceOpen = bar.priceOpen
         updatedBar.priceClose = newBar.priceClose
         return updatedBar
+    }
+    
+    func updateCandles(bars: [Bar], ib: InteractiveBrokers) {
+        var candles = self.candles
+        
+        if candles.isEmpty {
+            candles = OrderedSet(bars)
+        } else {
+            for bar in bars {
+                if let index = candles.lastIndex(of: bar) {
+                    // If the bar exists, update it
+                    candles.update(bar, at: index)
+                } else if let lastBar = candles.last, bar.timeOpen > lastBar.timeOpen {
+                    //If the bar is new append it
+                    candles.updateOrAppend(bar)
+                }
+            }
+        }
+        
+        // Higher 15min frame or 4 bars if trading in over 15min resolution.
+        let minimumCandleGroupCount = max(4, Int(900.0 / interval))
+        let maxCandlesCount = minimumCandleGroupCount * 60
+
+        if candles.count > maxCandlesCount {
+            candles.removeFirst(candles.count - maxCandlesCount)
+        }
+
+        self.candles = candles
     }
 
     func validateStrategy(strategy type: Strategy.Type, bars: [any Klines]) -> Bool {

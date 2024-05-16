@@ -15,7 +15,7 @@ struct DashboardView: View {
             detail: { detail }
         )
         .searchSuggestions {
-            ForEach(viewModel.suggestedSearches, id: \.contractID) { suggestion in
+            ForEach(viewModel.suggestedSearches, id: \.id) { suggestion in
                 suggestionView(label: suggestion.symbol, symbol: suggestion.symbol)
             }
             Divider()
@@ -80,7 +80,7 @@ struct DashboardView: View {
     var detail: some View {
         HStack {
             charts
-            controlPanel
+//            controlPanel
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }

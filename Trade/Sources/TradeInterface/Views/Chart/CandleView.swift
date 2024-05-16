@@ -8,7 +8,8 @@ struct CandleView: View {
     private var knotWidth: Double = 2
     
     private var color: Color {
-        kline.isLong ? .green : .red
+        guard kline.body > 0 else { return .gray }
+        return kline.isLong ? .green : .red
     }
     
     private var upperKnotHeight: Double {
@@ -16,7 +17,9 @@ struct CandleView: View {
     }
     
     private var bodyHeight: Double {
-        kline.body / scale.y * canvasSize.height
+        let height = kline.body / scale.y * canvasSize.height
+        guard height > 0 else { return 2 }
+        return height
     }
     
     private var bottomKnotHeight: Double {

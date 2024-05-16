@@ -8,7 +8,8 @@ public extension IBContract {
     ## Futures
     A regular futures contract is commonly defined using underlying asset symbol, currency and expiration date or expiration year and month.
     */
-    static let miniSPX = IBContract.future("ES", currency: "USD", expiration: try! Date.futureExpiration(year: 2024, month: 12), exchange: .CME)
+    static let miniSPX = IBContract.future("ME", currency: "USD", expiration: try! Date.futureExpiration(year: 2024, month: 12), exchange: .CME)
+//    static let microSPX = IBContract.future("MES", currency: "USD", expiration: try! Date.futureExpiration(year: 2024, month: 12), exchange: .CME)
 
     /*:
     Another possibility is to use initializer with local symbol which defines product's undelying asset and expiration. The future contract local symbol consists of
@@ -16,7 +17,7 @@ public extension IBContract {
     - Month code: F - January, G - February, H - March, J - April, K - May, M - June, N - July, Q - August, U - September, V - October, X - November, Z - December
     - Last digit of the expiration year
     */
-    static let microSPX = IBContract.future(localSymbol: "MESZ4", currency: "USD", exchange: .CME)
+    static let microSPX = IBContract.future(localSymbol: "MESM4", currency: "USD", exchange: .CME)
     
     
     static let aapl = IBContract.equity("AAPL", currency: "USD")
@@ -35,6 +36,7 @@ class InteractiveBrokers {
     private let client = IBClient.live(id: 0, type: .gateway)
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: [String] = []
+    private var requestIdMD: Int? = nil
     
     deinit {
         client.disconnect()
@@ -44,13 +46,15 @@ class InteractiveBrokers {
         client.eventFeed.sink {[weak self] anyEvent in
             switch anyEvent {
             case let event as IBManagedAccounts:
-                print("IBManagedAccounts", event)
                 self?.identifiers = event.identifiers
             case let event as IBPriceHistory:
-                self?.onBarUpdate?(event.requestID, event.prices)
-                print(String(repeating: "-", count: 30))
+                self?.onBarUpdate?(self?.requestIdMD ?? event.requestID, event.prices.sorted(by: { $0.date < $1.date }))
+//                try? self?.marketData(
+//                    .microSPX,
+//                    buffer: 60,
+//                    oldId: self?.requestIdMD
+//                )
             case let event as IBPriceBarUpdate:
-                print("IBPriceBarUpdate", event)
                 self?.onBarUpdate?(event.requestID, [event.bar])
             case let event as IBTick:
                 print("IBTick", event)
@@ -95,42 +99,51 @@ class InteractiveBrokers {
             currency: "USD",
             exchange: exchange != nil ? .init(rawValue: exchange!) : nil
         )
-        try client.placeOrder(
-            requestID,
-            contract: contract,
-            order: .trail(
-                trailingPercent: 0.15,
-                action: action,
-                quantity: 1,
-                account: account
-            )
-        )
+//        try client.placeOrder(
+//            requestID,
+//            contract: contract,
+//            order: .trail(
+//                trailingPercent: 0.15,
+//                action: action,
+//                quantity: 1,
+//                account: account
+//            )
+//        )
     }
     
-    public func marketData(_ contract:  IBContract) throws -> Chart {
-        let id = try realTimePublisher(for: contract)
+    public func marketData(_ contract:  IBContract, buffer: TimeInterval = 9000, oldId: Int? = nil) throws -> Chart {
+        let id = try historicBarPublisher(
+            for: contract,
+            barSize: .minute,
+            duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: .distantFuture)
+        )
+        
+//        let id = try realTimePublisher(for: contract)
+        requestIdMD = oldId ?? id
         return Chart(
-            id: id,
+            id: requestIdMD ?? id,
             symbol: contract.symbol
         )
     }
     
     public func marketData(
         _ symbol: String,
-        secType: IBSecuritiesType = .crypto,
-        exchange: IBExchange? = nil
+        secType: IBSecuritiesType = .future,
+        exchange: IBExchange? = .CME
     ) throws -> Chart {
+        fatalError("BOOOM!")
         let contract: IBContract = .init(
             symbol: symbol,
             secType: secType,
             currency: "USD",
             exchange: exchange
         )
-        try historicBarPublisher(
-            for: contract,
-            barSize: .minute,
-            duration: IBDuration(start: Date(timeIntervalSinceNow: -4500), end: Date())
-        )
+//        let id = try historicBarPublisher(
+//            for: contract,
+//            barSize: .fiveSeconds,
+//            duration: IBDuration(start: Date(timeIntervalSinceNow: -9000))
+//                // IBDuration(start: Date(timeIntervalSinceNow: -9000), end: Date())
+//        )
         
         let id = try realTimePublisher(for: contract)
         return Chart(
@@ -162,14 +175,14 @@ class InteractiveBrokers {
     private func historicBarPublisher(
         for contract: IBContract,
         barSize size: IBBarSize = .minute,
-        duration: IBDuration
+        duration: DateInterval
     ) throws -> Int {
         let requestID = client.nextRequestID
         try client.requestPriceHistory(
             requestID,
             contract: contract,
             barSize: size,
-            barSource: IBBarSource.aggTrades,
+            barSource: IBBarSource.trades,
             lookback: duration
         )
         return requestID
