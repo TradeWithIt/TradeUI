@@ -5,7 +5,6 @@ import SwiftUI
  */
 
 struct DashboardView: View {
-    @CodableAppStorage("chartSubscriptions") private var chartSubscriptions: Set<Chart> = []
     @Environment(TradeManager.self) private var trades
     @State private var viewModel = ViewModel()
     
@@ -16,59 +15,43 @@ struct DashboardView: View {
         )
         .searchSuggestions {
             ForEach(viewModel.suggestedSearches, id: \.id) { suggestion in
-                suggestionView(label: suggestion.symbol, symbol: suggestion.symbol)
+                suggestionView(label: suggestion, symbol: suggestion)
             }
             Divider()
-            suggestionView(label: "S&P 500", contract: .microSPX, interval: 60)
-            suggestionView(label: "DAX", contract: .dax, interval: 60)
+            suggestionView(label: "S&P 500 1min", symbol: "MESM4", interval: 60)
             
-            suggestionView(label: "ETH:1m", symbol: "ETH", interval: 60, secType: "CRYPTO", exchange: "PAXOS")
-            suggestionView(label: "ETH:3m", symbol: "ETH", interval: 180, secType: "CRYPTO", exchange: "PAXOS")
-            suggestionView(label: "ETH:5m", symbol: "ETH", interval: 300, secType: "CRYPTO", exchange: "PAXOS")
-            
+            suggestionView(label: "S&P 500 15min", symbol: "MESM4", interval: 900)
         }
         .searchable(text: $viewModel.symbol)
         .onChange(of: viewModel.symbol) {
             viewModel.suggestSearches()
         }
-        .onChange(of: trades.runtimes.isEmpty) {
-            guard trades.selectedRuntime == nil else { return }
-            trades.selectedRuntime = trades.runtimes.first?.value.id
+        .onChange(of: trades.watchers.isEmpty) {
+            guard trades.selectedWatcher == nil else { return }
+            trades.selectedWatcher = trades.watchers.first?.value.id
         }
     }
     
     func suggestionView(
         label: String,
         symbol: String,
-        interval: TimeInterval = 60,
-        secType: String = "FUT",
-        exchange: String = "CME"
-    ) -> some View {
-        SuggestionView(label: label, symbol: symbol) {
-            marketData(symbol, interval: interval, secType: secType, exchange: exchange)
-        }
-    }
-    
-    func suggestionView(
-        label: String,
-        contract: Contract,
         interval: TimeInterval = 60
     ) -> some View {
-        SuggestionView(label: label, symbol: contract.symbol) {
-            marketData(contract, interval: interval)
+        SuggestionView(label: label, symbol: symbol) {
+            marketData(symbol, interval: interval)
         }
     }
     
     var sidebar: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
-                ForEach(Array(trades.runtimes.values.sorted(by: { $0.id < $1.id })), id: \.id) { runtime in
-                    Text("\(runtime.symbol): \(viewModel.formatCandleTimeInterval(runtime.interval))")
+                ForEach(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
+                    Text("\(watcher.symbol): \(viewModel.formatCandleTimeInterval(watcher.interval))")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .bold(trades.selectedRuntime == runtime.id)
+                        .bold(trades.selectedWatcher == watcher.id)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            trades.selectedRuntime = runtime.id
+                            trades.selectedWatcher = watcher.id
                         }
                 }
             }
@@ -86,37 +69,17 @@ struct DashboardView: View {
     }
     
     var charts: some View {
-        RuntimeView(runtime: trades.runtime)
+        WatcherView(watcher: trades.watcher)
     }
     
     var controlPanel: some View {
-        OrderView(runtime: trades.runtime)
+        OrderView(watcher: trades.watcher)
     }
     
     
-    private func marketData(_ contract: Contract, interval: TimeInterval) {
+    private func marketData(_ symbol: String, interval: TimeInterval) {
         do {
-            guard let chart = try trades.marketData(contract, interval: interval) else { return }
-            chartSubscriptions.insert(chart)
-        } catch {
-            print("🔴 Faile to subscribe IB market data with error:", error)
-        }
-    }
-    
-    private func marketData(
-        _ symbol: String,
-        interval: TimeInterval = 60,
-        secType: String,
-        exchange: String
-    ) {
-        do {
-            guard let chart = try trades.marketData(
-                symbol,
-                interval: interval,
-                secType: secType,
-                exchange: exchange
-            ) else { return }
-            chartSubscriptions.insert(chart)
+            try trades.marketData(symbol, interval: interval)
         } catch {
             print("🔴 Faile to subscribe IB market data with error:", error)
         }

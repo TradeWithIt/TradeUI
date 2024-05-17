@@ -32,10 +32,10 @@ public struct MenuBarContent: View {
     
     var accessory: some View {
         VStack {
-            ForEach(Array(trades.runtimes.keys)) { id in
-                Button(trades.runtimes[id]?.symbol ?? "Unknown") {
+            ForEach(Array(trades.watchers.keys)) { id in
+                Button(trades.watchers[id]?.symbol ?? "Unknown") {
                     updateActivationPolicy(to: .regular)
-                    trades.selectedRuntime = id
+                    trades.selectedWatcher = id
                 }
             }
             Divider()

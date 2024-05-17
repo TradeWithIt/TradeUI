@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import Runtime
 
 struct OrderView: View {
     @Environment(TradeManager.self) private var trades
@@ -8,7 +9,7 @@ struct OrderView: View {
     @State private var takeProfit: Int = 25
     @State private var stopLoss: Int = 10
     @State private var whichList = 0
-    let runtime: Runtime?
+    let watcher: Watcher?
     
     let customDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -100,9 +101,9 @@ struct OrderView: View {
     var order: some View {
         VStack {
             HStack(alignment: .top) {
-                Button("Buy Mkt") { makeOrder(.buy) }
+                Button("Buy Mkt") { print("buy") }
                     .buttonStyle(TradingButtonStyle(backgroundColor: .green))
-                Button("Sell Mkt") { makeOrder(.sell) }
+                Button("Sell Mkt") { print("sell") }
                     .buttonStyle(TradingButtonStyle(backgroundColor: .red))
                 HStack(alignment: .top) {
                     Text("Contract Count")
@@ -136,17 +137,6 @@ struct OrderView: View {
         } catch {
             viewModel.positions = []
             print("🔴 Failed to load order list", error)
-        }
-    }
-    
-    func makeOrder(_ action: OrderAction) {
-        guard let runtime else { return }
-        Task {
-            try runtime.makeOrder(
-                ib: trades.ib,
-                action: action,
-                orderQty: contractNumber
-            )
         }
     }
 }

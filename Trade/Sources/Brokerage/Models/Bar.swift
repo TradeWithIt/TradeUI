@@ -1,16 +1,21 @@
 import Foundation
-import TradingStrategy
 
-struct Bar: Klines, Hashable {
-    var timeOpen: TimeInterval
-    var interval: TimeInterval
+public struct CandleData {
+    public var symbol: Symbol
+    public var interval: TimeInterval
+    public var bars: [Bar]
+}
 
-    var priceOpen: Double
-    var priceHigh: Double
-    var priceLow: Double
-    var priceClose: Double
+public struct Bar: Hashable {
+    public var timeOpen: TimeInterval
+    public var interval: TimeInterval
+
+    public var priceOpen: Double
+    public var priceHigh: Double
+    public var priceLow: Double
+    public var priceClose: Double
     
-    init(
+    public init(
         timeOpen: TimeInterval,
         interval: TimeInterval,
         priceOpen: Double,
@@ -28,11 +33,11 @@ struct Bar: Klines, Hashable {
 }
 
 extension Bar {
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(timeOpen)
     }
 
-    static func == (lhs: Bar, rhs: Bar) -> Bool {
+    public static func == (lhs: Bar, rhs: Bar) -> Bool {
         return lhs.timeOpen == rhs.timeOpen
     }
 }

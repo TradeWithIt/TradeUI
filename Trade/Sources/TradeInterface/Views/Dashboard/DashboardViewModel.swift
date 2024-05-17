@@ -4,7 +4,7 @@ import SwiftUI
 extension DashboardView {
     @Observable class ViewModel {
         var symbol: String = ""
-        var suggestedSearches: [Contract] = []
+        var suggestedSearches: [String] = []
         
         private var isLookingUpSuggestions: Bool = false
         
@@ -50,7 +50,7 @@ extension DashboardView {
             }
         }
     
-        private func suggestContract(_ symbol: String) async throws -> [Contract]? {
+        private func suggestContract(_ symbol: String) async throws -> [String]? {
             return nil
         }
     }
