@@ -19,7 +19,7 @@ let package = Package(
         .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
         
         // MARK: Trading Strategy
-        .package(url: "https://\(gitHubToken()):x-oauth-basic@github.com/TradeWithIt/TradeWithIt.git", branch: "master"),
+        .package(url: "https://\(gitHubToken()):x-oauth-basic@github.com/shial4/TradeWithIt.git", branch: "master"),
         
         // MARK: Tools
         .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0"))

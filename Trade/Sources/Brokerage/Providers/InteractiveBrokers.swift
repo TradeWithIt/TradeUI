@@ -37,14 +37,7 @@ public class InteractiveBrokers: Market {
     }
     
     public func makeOrder(symbol: Symbol, action: OrderAction, order: Order) throws {
-        guard let account = identifiers.first else { return }
-        let requestID = client.nextRequestID
-        let contract: IBContract = .init(
-            symbol: symbol,
-            secType: .future,
-            currency: "USD",
-            exchange: .CME
-        )
+        
     }
     
     public func marketData(
