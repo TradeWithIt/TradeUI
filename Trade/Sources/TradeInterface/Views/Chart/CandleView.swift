@@ -48,6 +48,7 @@ struct CandleView: View {
                 .fill(color.opacity(0.4))
                 .frame(width: bodyWidth / 5.0, height: Swift.max(0, bottomKnotHeight))
         }
+        .contentShape(Rectangle())
         .onTapGesture {
             print(kline)
         }

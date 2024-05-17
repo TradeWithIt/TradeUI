@@ -11,6 +11,7 @@ struct WatcherView: View {
                 strategy: watcher.strategy,
                 interval: watcher.interval
             )
+            .id(watcher.id)
         } else {
             ChartView(interval: 60, data: [])
         }

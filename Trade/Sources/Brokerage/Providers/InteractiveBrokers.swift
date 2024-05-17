@@ -3,9 +3,15 @@ import Combine
 import IBKit
 
 public class InteractiveBrokers: Market {
+    private struct Asset: Hashable {
+        var symbol: String
+        var interval: TimeInterval
+    }
+    
     private let client = IBClient.live(id: 0, type: .gateway)
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: Set<String> = []
+    private var unsubscribeMarketData: Set<Asset> = []
     
     deinit {
         client.disconnect()
@@ -27,17 +33,20 @@ public class InteractiveBrokers: Market {
         try client.connect()
     }
     
-    public func search() {
+    public func search(symbol:  Symbol) {
         do {
             let requestID = client.nextRequestID
-            try client.searchSymbols(requestID, nameOrSymbol: "MES")
+            try client.searchSymbols(requestID, nameOrSymbol: "APPL")
         } catch {
             print(error.localizedDescription)
         }
     }
     
     public func makeOrder(symbol: Symbol, action: OrderAction, order: Order) throws {
-        
+    }
+    
+    public func unsubscribeMarketData(symbol:  Symbol, interval: TimeInterval) {
+        unsubscribeMarketData.insert(Asset(symbol: symbol, interval: interval))
     }
     
     public func marketData(
@@ -46,6 +55,7 @@ public class InteractiveBrokers: Market {
         buffer: TimeInterval
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract.future(localSymbol: symbol, currency: "USD", exchange: .CME)
+        unsubscribeMarketData.remove(Asset(symbol: symbol, interval: interval))
         return try historicBarPublisher(
             contract: contract,
             barSize: IBBarSize(timeInterval: interval),
@@ -54,6 +64,10 @@ public class InteractiveBrokers: Market {
     }
     
     // MARK: Private IB Type handling
+    
+    private func unsubscribeMarketData(_ requestID: Int) {
+        try? client.cancelHistoricalData(requestID)
+    }
     
     private func historicBarPublisher(
         contract: IBContract,
@@ -67,7 +81,14 @@ public class InteractiveBrokers: Market {
         let publisher = client.eventFeed
             .compactMap { $0 as? IBIndexedEvent }
             .filter { $0.requestID == requestID }
-            .compactMap { response -> CandleData? in
+            .compactMap {[weak self] response -> CandleData? in
+                let asset = Asset(symbol: symbol, interval: interval)
+                if let data = self?.unsubscribeMarketData, data.contains(asset) {
+                    self?.unsubscribeMarketData.remove(asset)
+                    self?.unsubscribeMarketData(requestID)
+                    return nil
+                }
+
                 switch response {
                 case let event as IBPriceHistory:
                     return CandleData(
@@ -154,30 +175,4 @@ extension Bar {
             priceClose: update.close
         )
     }
-}
-
-public extension IBContract {
-    /*:
-    ## Futures
-    A regular futures contract is commonly defined using underlying asset symbol, currency and expiration date or expiration year and month.
-    */
-    static let miniSPX = IBContract.future("ME", currency: "USD", expiration: try! Date.futureExpiration(year: 2024, month: 12), exchange: .CME)
-//    static let microSPX = IBContract.future("MES", currency: "USD", expiration: try! Date.futureExpiration(year: 2024, month: 12), exchange: .CME)
-
-    /*:
-    Another possibility is to use initializer with local symbol which defines product's undelying asset and expiration. The future contract local symbol consists of
-    - Asset symbol
-    - Month code: F - January, G - February, H - March, J - April, K - May, M - June, N - July, Q - August, U - September, V - October, X - November, Z - December
-    - Last digit of the expiration year
-    */
-    static let microSPX = IBContract.future(localSymbol: "MESM4", currency: "USD", exchange: .CME)
-    
-    
-    static let aapl = IBContract.equity("AAPL", currency: "USD")
-    static let cryptoEth = IBContract.crypto("ETH", currency: "USD", exchange: .PAXOS)
-    static let dax = IBContract.index("DAX", currency: "EUR", exchange: .EUREX)
-    static let sp500 = IBContract.future(localSymbol: "MESM4", currency: "USD", exchange: .SMART)
-    static let russell2000 = IBContract.future(localSymbol: "M2KM4", currency: "USD", exchange: .CME)
-    static let NASDAQ100 = IBContract.future(localSymbol: "MNQM4", currency: "USD", exchange: .CME)
-    static let Dow = IBContract.future(localSymbol: "MYMM4", currency: "USD", exchange: .CME)
 }

@@ -4,10 +4,7 @@ import Brokerage
 import TradingStrategy
 import TradeWithIt
 import Combine
-
-#if canImport(SwiftUI)
 import SwiftUI
-#endif
 
 extension Bar: Klines {}
 
@@ -17,9 +14,7 @@ private extension TimeInterval {
     }
 }
 
-#if canImport(SwiftUI)
 @Observable
-#endif
 public class Watcher: Identifiable {
     public private(set) var symbol: Symbol
     public private(set) var interval: TimeInterval
@@ -70,7 +65,7 @@ public class Watcher: Identifiable {
         .throttle(for: .milliseconds(200), scheduler: queue, latest: false)
         .receive(on: queue)
         .compactMap { [weak self] candles -> [Bar]? in
-            return self?.updateBars(candles.bars)
+            self?.updateBars(candles.bars)
         }
         .compactMap { [weak self] bars -> (any Strategy)? in
             self?.updateStrategy(bars: bars)

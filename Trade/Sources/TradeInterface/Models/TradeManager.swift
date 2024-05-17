@@ -3,6 +3,15 @@ import Runtime
 import Brokerage
 import NIOConcurrencyHelpers
 
+public struct Asset: Codable, Hashable {
+    var symbol: String
+    var interval: TimeInterval
+    
+    var id: String {
+        "\(symbol):\(interval)"
+    }
+}
+
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
     private let marketData: MarketData
@@ -31,15 +40,26 @@ import NIOConcurrencyHelpers
     }
     
     // MARK: - Market Data
+    public func search() {
+        marketData.search(symbol: "MES")
+    }
     
-    public func marketData(_ symbol: String, interval: TimeInterval) throws {
+    public func cancelMarketData(_ asset: Asset) {
+        marketData.unsubscribeMarketData(symbol: asset.symbol, interval: asset.interval)
+        lock.withLockVoid {
+            watchers.removeValue(forKey: asset.id)
+        }
+    }
+    
+    public func marketData(_ asset: Asset) throws {
         try lock.withLockVoid {
+            guard watchers[asset.id] == nil else { return }
             let watcher = try Watcher(
-                symbol: symbol,
-                interval: interval,
+                symbol: asset.symbol,
+                interval: asset.interval,
                 marketData: marketData
             )
-            watchers[watcher.id] = watcher
+            watchers[asset.id] = watcher
         }
     }
 }
