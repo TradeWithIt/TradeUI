@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftUIComponents
+import Brokerage
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
@@ -13,7 +14,7 @@ struct DashboardView: View {
         )
         .searchSuggestions {
             ForEach(viewModel.suggestedSearches, id: \.id) { suggestion in
-                suggestionView(label: suggestion, symbol: suggestion)
+                suggestionView(label: suggestion.id, symbol: suggestion.localSymbol)
             }
             Divider()
             suggestionView(label: "Micro E-Mini S&P 500 (1 min)", symbol: "MESM4", interval: 60)

@@ -33,13 +33,8 @@ public class InteractiveBrokers: Market {
         try client.connect()
     }
     
-    public func search(symbol:  Symbol) {
-        do {
-            let requestID = client.nextRequestID
-            try client.searchSymbols(requestID, nameOrSymbol: "APPL")
-        } catch {
-            print(error.localizedDescription)
-        }
+    public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[Contract], Never> {
+        try search(symbol: symbol)
     }
     
     public func makeOrder(symbol: Symbol, action: OrderAction, order: Order) throws {
@@ -64,6 +59,62 @@ public class InteractiveBrokers: Market {
     }
     
     // MARK: Private IB Type handling
+    
+    private func contractDetails(_ contract: IBContract) throws -> AnyPublisher<[Contract], Never> {
+        let requestID = client.nextRequestID
+        let publisher = client.eventFeed
+            .compactMap { $0 as? IBIndexedEvent }
+            .filter { $0.requestID == requestID }
+            .compactMap { response -> [Contract] in
+                switch response {
+                case let event as IBContractDetails:
+                    let contract = Contract(
+                        symbol: event.underlyingSymbol ?? contract.symbol,
+                        type: event.stockType,
+                        primaryExchange: event.validExchanges?.first,
+                        currency: contract.currency
+                    )
+                    return [contract]
+                case _ as IBContractDetailsEnd:
+                    return []
+                case let event as IBServerError:
+                    print("Error: \(event.message)")
+                    return []
+                default:
+                    print("Unexpected event: \(response)")
+                    return []
+                }
+            }
+            .eraseToAnyPublisher()
+        try client.contractDetails(requestID, contract: contract)
+        return publisher
+    }
+    /**
+     {"pageNumber":1,"pageSize":"100","sortField":"symbol","sortDirection":"asc","productCountry":["US","BM","CA","MX","US","KY"],"productSymbol":"MES","newProduct":"all","productType":["STK","ETF","OPT","FUT","FOP","CFD"],"domain":"jp"}
+     */
+    private func search(symbol: String) throws -> AnyPublisher<[Contract], Never> {
+        let requestID = client.nextRequestID
+        let publisher = client.eventFeed
+            .compactMap { $0 as? IBContractSearchResult }
+            .filter { $0.requestId == requestID }
+            .flatMap { event -> AnyPublisher<[Contract], Never> in
+                guard let firstValue = event.values.first else {
+                    return Just<[Contract]>([]).eraseToAnyPublisher()
+                }
+                let types = firstValue.availableTypes + [firstValue.type]
+                let publishers = types.map { type -> AnyPublisher<[Contract], Never> in
+                    let contract = IBContract(symbol: firstValue.symbol, secType: type, currency: firstValue.currency)
+                    return (try? self.contractDetails(contract)) ?? Just<[Contract]>([]).eraseToAnyPublisher()
+                }
+                return Publishers.MergeMany(publishers)
+                    .collect()
+                    .map { $0.flatMap { $0 } }
+                    .eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+        try client.searchSymbols(requestID, nameOrSymbol: symbol)
+        return publisher
+    }
     
     private func unsubscribeMarketData(_ requestID: Int) {
         try? client.cancelHistoricalData(requestID)
@@ -105,15 +156,12 @@ public class InteractiveBrokers: Market {
                         bars: [Bar(bar: event.bar, interval: interval)]
                     )
                 case let event as IBServerError:
-                    // Optionally log the error or handle it differently
                     print("Error: \(event.message)")
                     return nil
                 default:
-                    let message = "This should never happen but received anyway \(response)"
-                    print("Unexpected event: \(message)")
+                    print("Unexpected event: \(response)")
                     return nil
                 }
-                
             }
             .eraseToAnyPublisher()
         
@@ -137,7 +185,6 @@ public class InteractiveBrokers: Market {
             .compactMap { $0 as? IBIndexedEvent }
             .filter { $0.requestID == requestID }
             .tryMap { response -> OrderEvent in
-                
                 switch response {
                 case let event as OrderEvent:
                     return event
@@ -147,7 +194,6 @@ public class InteractiveBrokers: Market {
                     let message = "thsi should never happen but received anyway \(response)"
                     throw Error.somethingWentWrong(message)
                 }
-                
             }
             .eraseToAnyPublisher()
         

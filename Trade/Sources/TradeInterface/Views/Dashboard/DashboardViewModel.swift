@@ -1,18 +1,13 @@
 import Foundation
 import SwiftUI
+import Combine
+import Brokerage
 
 extension DashboardView {
     @Observable class ViewModel {
+        var cancellables = Set<AnyCancellable>()
         var symbol: String = ""
-        var suggestedSearches: [String] = []
-        
-        private var isLookingUpSuggestions: Bool = false
-        
-        func suggestSearches() {
-            guard !isLookingUpSuggestions else { return }
-            isLookingUpSuggestions = true
-            lookupSuggestions()
-        }
+        var suggestedSearches: [Product] = []
         
         func formatCandleTimeInterval(_ interval: TimeInterval) -> String {
             let formatter = DateComponentsFormatter()
@@ -34,20 +29,26 @@ extension DashboardView {
             return formatter.string(from: interval) ?? "N/A"
         }
         
-        private func lookupSuggestions() {
-            let symbolToSearch = symbol
-            Task {
-                do {
-                    suggestedSearches = try await suggestContract(symbol) ?? []
-                    if symbolToSearch != symbol {
-                        lookupSuggestions()
-                    } else {
-                        isLookingUpSuggestions = false
-                    }
-                } catch {
-                    print("🔴 Failed to suggest search with error: ", error)
-                }
+        private func suggestSearches() {
+            do {
+                try loadProducts(symbol: symbol)
+            } catch {
+                print("🔴 Failed to suggest search with error: ", error)
             }
+        }
+        
+        private func loadProducts(symbol: Symbol) throws {
+            try Product.fetchProducts(symbol: symbol)
+                .throttle(for: .milliseconds(200), scheduler: DispatchQueue.main, latest: false)
+                .receive(on: DispatchQueue.main)
+                .sink(receiveCompletion: { completion in
+                    if case .failure(let error) = completion {
+                        print("🔴 errorMessage: ", error)
+                    }
+                }, receiveValue: { response in
+                    self.suggestedSearches = Array(response.products)
+                })
+                .store(in: &cancellables)
         }
     
         private func suggestContract(_ symbol: String) async throws -> [String]? {
