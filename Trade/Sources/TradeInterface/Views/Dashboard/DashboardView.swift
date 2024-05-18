@@ -14,7 +14,7 @@ struct DashboardView: View {
         )
         .searchSuggestions {
             ForEach(viewModel.suggestedSearches, id: \.id) { suggestion in
-                suggestionView(label: suggestion.id, symbol: suggestion.localSymbol)
+                suggestionView(label: suggestion.label, symbol: suggestion.localSymbol)
             }
             Divider()
             suggestionView(label: "Micro E-Mini S&P 500 (1 min)", symbol: "MESM4", interval: 60)

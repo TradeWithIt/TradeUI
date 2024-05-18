@@ -22,6 +22,21 @@ public struct Product: Decodable, Hashable, Identifiable {
         "\(type) \(symbol) \(exchangeId) \(localSymbol)"
     }
     
+    public var label: String {
+        let htmlReplacements: [Character: String] = [
+                "<": "&lt;",
+                ">": "&gt;",
+                "&": "&amp;",
+                "\"": "&quot;",
+                "'": "&apos;"
+            ]
+        var decodedString = description
+        for (character, entity) in htmlReplacements {
+            decodedString = decodedString.replacingOccurrences(of: entity, with: String(character))
+        }
+        return "\(localSymbol) \(decodedString)"
+    }
+    
     public let type: String
     public let symbol: String
     public let exchangeId: String

@@ -29,7 +29,7 @@ extension DashboardView {
             return formatter.string(from: interval) ?? "N/A"
         }
         
-        private func suggestSearches() {
+        public func suggestSearches() {
             do {
                 try loadProducts(symbol: symbol)
             } catch {
