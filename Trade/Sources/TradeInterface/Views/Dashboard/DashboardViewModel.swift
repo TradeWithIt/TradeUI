@@ -3,11 +3,58 @@ import SwiftUI
 import Combine
 import Brokerage
 
+class ObservableString {
+    // The subject that will manage the updates
+    private let subject = CurrentValueSubject<String, Never>("")
+    
+    // The public publisher that external subscribers can subscribe to
+    var publisher: AnyPublisher<String, Never> {
+        subject.eraseToAnyPublisher()
+    }
+    
+    // The property that you will update
+    var value: String {
+        didSet {
+            subject.send(value)
+        }
+    }
+    
+    init(initialValue: String) {
+        self.value = initialValue
+    }
+}
+
 extension DashboardView {
     @Observable class ViewModel {
         var cancellables = Set<AnyCancellable>()
-        var symbol: String = ""
-        var suggestedSearches: [Product] = []
+        var symbol = ObservableString(initialValue: "")
+        var suggestedSearches: [any Contract] = []
+        
+        private var marketData: MarketData?
+        
+        deinit {
+            cancellables.forEach { $0.cancel() }
+            cancellables.removeAll()
+        }
+        
+        init() {
+            symbol.publisher
+                .removeDuplicates()
+                .throttle(for: .seconds(0.5), scheduler: DispatchQueue.main, latest: true)
+                .sink { [weak self] symbol in
+                    guard let self, let marketData = self.marketData else { return }
+                    do {
+                        try self.loadProducts(marketData: marketData, symbol: Symbol(symbol))
+                    } catch {
+                        print("🔴 Failed to suggest search with error: ", error)
+                    }
+                }
+                .store(in: &cancellables)
+        }
+        
+        func updateMarketData(_ marketData: MarketData) {
+            self.marketData = marketData
+        }
         
         func formatCandleTimeInterval(_ interval: TimeInterval) -> String {
             let formatter = DateComponentsFormatter()
@@ -29,30 +76,17 @@ extension DashboardView {
             return formatter.string(from: interval) ?? "N/A"
         }
         
-        public func suggestSearches() {
-            do {
-                try loadProducts(symbol: symbol)
-            } catch {
-                print("🔴 Failed to suggest search with error: ", error)
-            }
-        }
-        
-        private func loadProducts(symbol: Symbol) throws {
-            try Product.fetchProducts(symbol: symbol)
-                .throttle(for: .milliseconds(200), scheduler: DispatchQueue.main, latest: false)
+        private func loadProducts(marketData: MarketData, symbol: Symbol) throws {
+            try marketData.search(nameOrSymbol: symbol)
                 .receive(on: DispatchQueue.main)
                 .sink(receiveCompletion: { completion in
                     if case .failure(let error) = completion {
                         print("🔴 errorMessage: ", error)
                     }
                 }, receiveValue: { response in
-                    self.suggestedSearches = Array(response.products)
+                    self.suggestedSearches = response
                 })
                 .store(in: &cancellables)
-        }
-    
-        private func suggestContract(_ symbol: String) async throws -> [String]? {
-            return nil
         }
     }
 }

@@ -6,7 +6,7 @@ public protocol MarketData {
     /// Connect Service
     func connect() throws
     /// Asset symbol search
-    func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[Contract], Never>
+    func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Error>
     /// Requests price history with continues real time updates for asset.
     /// - Parameters:
     ///   - symbol: Asset symbol

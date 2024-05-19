@@ -15,10 +15,9 @@ public struct Asset: Codable, Hashable {
 
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
-    private let marketData: MarketData
-    
     private var cancellable: AnyCancellable?
     
+    let marketData: MarketData
     var watchers: [String: Watcher] = [:]
     var selectedWatcher: String?
     
@@ -43,12 +42,6 @@ public struct Asset: Codable, Hashable {
     }
     
     // MARK: - Market Data
-    public func search() {
-        cancellable = try? marketData.search(nameOrSymbol: "MES")
-            .sink(receiveValue: { contracts in
-                print("🔵", contracts)
-            })
-    }
     
     public func cancelMarketData(_ asset: Asset) {
         marketData.unsubscribeMarketData(symbol: asset.symbol, interval: asset.interval)

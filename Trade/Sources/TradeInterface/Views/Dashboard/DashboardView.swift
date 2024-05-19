@@ -23,13 +23,13 @@ struct DashboardView: View {
             suggestionView(label: "Micro E-mini Russell 2000 (1 min)", symbol: "M2KM4", interval: 60)
             suggestionView(label: "E-Mini Russell 2000 (1 min)", symbol: "RTYM4", interval: 60)
         }
-        .searchable(text: $viewModel.symbol)
-        .onChange(of: viewModel.symbol) {
-            viewModel.suggestSearches()
-        }
+        .searchable(text: $viewModel.symbol.value)
         .onChange(of: trades.watchers.isEmpty) {
             guard trades.selectedWatcher == nil else { return }
             trades.selectedWatcher = trades.watchers.first?.value.id
+        }
+        .task {
+            viewModel.updateMarketData(trades.marketData)
         }
     }
     
