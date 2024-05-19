@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import Brokerage
 
 public final class MarketDataFile {
     private let fileUrl: URL
