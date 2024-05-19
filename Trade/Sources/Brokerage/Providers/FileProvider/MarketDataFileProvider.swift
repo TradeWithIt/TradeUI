@@ -35,6 +35,15 @@ public class MarketDataFileProvider: MarketData {
         }
     }
     
+    public func save(symbol: Symbol, interval: TimeInterval, bars: [Bar]) {
+        let fileName = "\(symbol):\(interval)"
+        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
+        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        marketDataFile.save(
+            candleData: CandleData(symbol: symbol, interval: interval, bars: bars)
+        )
+    }
+    
     public func unsubscribeMarketData(symbol: Symbol, interval: TimeInterval) {
         assertionFailure("unsubscribe from market data, doesn't work for files.")
     }
