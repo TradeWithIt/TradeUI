@@ -13,6 +13,16 @@ public protocol MarketData {
     ///   - interval: Bar interval
     ///   - buffer: Default to 54000 for 1minute
     func marketData(symbol:  Symbol, interval: TimeInterval, buffer: TimeInterval) throws -> AnyPublisher<CandleData, Never>
+    /// Requests price history with continues real time updates for asset.
+    /// - Parameters:
+    ///   - product: Asset symbol product information
+    ///   - interval: Bar interval
+    ///   - buffer: Default to 54000 for 1minute
+    func marketData(
+        contract product: any Contract,
+        interval: TimeInterval,
+        buffer: TimeInterval
+    ) throws -> AnyPublisher<CandleData, Never>
     /// Cancel real time market data updates
     /// - Parameters:
     ///   - symbol: Asset symbol

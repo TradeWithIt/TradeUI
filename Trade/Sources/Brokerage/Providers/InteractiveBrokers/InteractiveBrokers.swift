@@ -62,6 +62,24 @@ public class InteractiveBrokers: Market {
         )
     }
     
+    public func marketData(
+        contract product: any Contract,
+        interval: TimeInterval,
+        buffer: TimeInterval
+    ) throws -> AnyPublisher<CandleData, Never> {
+        let contract = IBContract.future(
+            localSymbol: product.localSymbol,
+            currency: product.currency,
+            exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
+        )
+        unsubscribeMarketData.remove(Asset(symbol: product.localSymbol, interval: interval))
+        return try historicBarPublisher(
+            contract: contract,
+            barSize: IBBarSize(timeInterval: interval),
+            duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: .distantFuture)
+        )
+    }
+    
     // MARK: Private IB Type handling
     
     private func unsubscribeMarketData(_ requestID: Int) {

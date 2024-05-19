@@ -61,4 +61,17 @@ public struct Asset: Codable, Hashable {
             watchers[asset.id] = watcher
         }
     }
+    
+    public func marketData(contract: any Contract, interval: TimeInterval) throws {
+        let assetId = "\(contract.localSymbol):\(interval)"
+        try lock.withLockVoid {
+            guard watchers[assetId] == nil else { return }
+            let watcher = try Watcher(
+                symbol: contract.localSymbol,
+                interval: interval,
+                marketData: marketData
+            )
+            watchers[assetId] = watcher
+        }
+    }
 }

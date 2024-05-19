@@ -43,6 +43,15 @@ struct DashboardView: View {
         }
     }
     
+    func suggestionView(
+        contract: any Contract,
+        interval: TimeInterval = 60
+    ) -> some View {
+        SuggestionView(label: contract.label, symbol: contract.localSymbol) {
+            marketData(contract: contract, interval: interval)
+        }
+    }
+    
     var sidebar: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
@@ -108,6 +117,16 @@ struct DashboardView: View {
             let asset = Asset(symbol: symbol, interval: interval)
             watchedAssets.insert(asset)
             try trades.marketData(asset)
+        } catch {
+            print("🔴 Faile to subscribe IB market data with error:", error)
+        }
+    }
+    
+    private func marketData(contract: any Contract, interval: TimeInterval) {
+        do {
+            let asset = Asset(symbol: contract.localSymbol, interval: interval)
+            watchedAssets.insert(asset)
+            try trades.marketData(contract: contract, interval: interval)
         } catch {
             print("🔴 Faile to subscribe IB market data with error:", error)
         }
