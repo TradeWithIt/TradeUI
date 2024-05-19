@@ -4,9 +4,15 @@ public struct CandleData {
     public var symbol: Symbol
     public var interval: TimeInterval
     public var bars: [Bar]
+    
+    public init(symbol: Symbol, interval: TimeInterval, bars: [Bar]) {
+        self.symbol = symbol
+        self.interval = interval
+        self.bars = bars
+    }
 }
 
-public struct Bar: Hashable {
+public struct Bar: Codable, Hashable {
     public var timeOpen: TimeInterval
     public var interval: TimeInterval
 
