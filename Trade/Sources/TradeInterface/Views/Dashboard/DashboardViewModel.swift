@@ -24,13 +24,22 @@ class ObservableString {
     }
 }
 
+
 extension DashboardView {
+    enum SheetType {
+        case snapshotPreview
+        case snapshotPlayback
+    }
     @Observable class ViewModel {
         var cancellables = Set<AnyCancellable>()
         var symbol = ObservableString(initialValue: "")
         var suggestedSearches: [any Contract] = []
+        var snapshotFileNames: [String] = []
         
-        private var marketData: MarketData?
+        var selectedSnapshot: String? = nil
+        var isPresentingSgeet: SheetType? = nil
+        
+        private var market: Market?
         
         deinit {
             cancellables.forEach { $0.cancel() }
@@ -42,9 +51,9 @@ extension DashboardView {
                 .removeDuplicates()
                 .throttle(for: .seconds(0.5), scheduler: DispatchQueue.main, latest: true)
                 .sink { [weak self] symbol in
-                    guard let self, let marketData = self.marketData else { return }
+                    guard let self, let market = self.market else { return }
                     do {
-                        try self.loadProducts(marketData: marketData, symbol: Symbol(symbol))
+                        try self.loadProducts(market: market, symbol: Symbol(symbol))
                     } catch {
                         print("🔴 Failed to suggest search with error: ", error)
                     }
@@ -52,8 +61,21 @@ extension DashboardView {
                 .store(in: &cancellables)
         }
         
-        func updateMarketData(_ marketData: MarketData) {
-            self.marketData = marketData
+        func updateMarketData(_ market: Market) {
+            self.market = market
+        }
+        
+        func loadSnapshotFileNames(url: URL?, fileManager: FileManager = .default) {
+            guard let url = url else { return }
+            do {
+                let fileURLs = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+                snapshotFileNames = fileURLs.compactMap { url in
+                    print(url, url.pathExtension)
+                    return url.pathExtension == "txt" ? url.deletingPathExtension().lastPathComponent : nil
+                }
+            } catch {
+                print("Error loading files: \(error)")
+            }
         }
         
         func formatCandleTimeInterval(_ interval: TimeInterval) -> String {
@@ -76,8 +98,8 @@ extension DashboardView {
             return formatter.string(from: interval) ?? "N/A"
         }
         
-        private func loadProducts(marketData: MarketData, symbol: Symbol) throws {
-            try marketData.search(nameOrSymbol: symbol)
+        private func loadProducts(market: MarketSearch, symbol: Symbol) throws {
+            try market.search(nameOrSymbol: symbol)
                 .receive(on: DispatchQueue.main)
                 .sink(receiveCompletion: { completion in
                     if case .failure(let error) = completion {

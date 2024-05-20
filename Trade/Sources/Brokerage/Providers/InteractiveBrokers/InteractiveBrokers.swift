@@ -51,8 +51,9 @@ public class InteractiveBrokers: Market {
     public func marketData(
         symbol:  Symbol,
         interval: TimeInterval,
-        buffer: TimeInterval
+        userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
+        let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         let contract = IBContract.future(localSymbol: symbol, currency: "USD", exchange: .CME)
         unsubscribeMarketData.remove(Asset(symbol: symbol, interval: interval))
         return try historicBarPublisher(
@@ -65,13 +66,14 @@ public class InteractiveBrokers: Market {
     public func marketData(
         contract product: any Contract,
         interval: TimeInterval,
-        buffer: TimeInterval
+        userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract.future(
             localSymbol: product.localSymbol,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )
+        let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         unsubscribeMarketData.remove(Asset(symbol: product.localSymbol, interval: interval))
         return try historicBarPublisher(
             contract: contract,

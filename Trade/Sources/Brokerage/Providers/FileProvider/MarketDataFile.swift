@@ -2,7 +2,7 @@ import Foundation
 import Combine
 
 public final class MarketDataFile {
-    private let fileUrl: URL
+    public let fileUrl: URL
     private var timerSubscription: AnyCancellable?
     
     public init(fileUrl: URL) {
@@ -28,10 +28,11 @@ public final class MarketDataFile {
             let fileHandle = try FileHandle(forReadingFrom: fileUrl)
             let symbol = fileHandle.readLine()?.toString() ?? ""
             let barInterval = TimeInterval(fileHandle.readLine()?.toString() ?? "0") ?? 0
-            
-            timerSubscription = Timer.publish(every: interval / speedFactor, on: .main, in: .common)
+            let _ = fileHandle.readLine()?.toString() ?? "" // strategyName
+            let playbackSpeed = interval / speedFactor
+            timerSubscription = Timer.publish(every: playbackSpeed, on: .main, in: .common)
                 .autoconnect()
-                .sink { _ in
+                .sink {[weak self] _ in
                     if let lineData = fileHandle.readLine() {
                         let decoder = JSONDecoder()
                         if let bar = try? decoder.decode(Bar.self, from: lineData) {
@@ -40,7 +41,8 @@ public final class MarketDataFile {
                     } else {
                         fileHandle.closeFile()
                         subject.send(completion: .finished)
-                        self.timerSubscription?.cancel()
+                        self?.timerSubscription?.cancel()
+                        self?.timerSubscription = nil
                     }
                 }
         }
@@ -48,22 +50,25 @@ public final class MarketDataFile {
         return subject.eraseToAnyPublisher()
     }
     
-    public func save(candleData: CandleData) {
+    public func save(strategyName: String, candleData: CandleData) {
         let fileManager = FileManager.default
         let encoder = JSONEncoder()
         let filePath = fileUrl.path()
         do {
             if !fileManager.fileExists(atPath: filePath) {
-                // Create new file if it doesn't exist
+                // Create intermediate directories
+                try fileManager.createDirectory(at: fileUrl.deletingLastPathComponent(), withIntermediateDirectories: true)
+                // Create new file
                 fileManager.createFile(atPath: filePath, contents: nil)
             }
             
             let existingData = try String(contentsOf: fileUrl, encoding: .utf8)
             var lines = existingData.components(separatedBy: .newlines)
             
-            if lines.count > 2 {
+            if lines.count > 3 {
                 let currentSymbol = lines[0]
                 let currentInterval = TimeInterval(lines[1]) ?? 0
+                // let currentStrategy = lines[2]
                 
                 if currentSymbol == candleData.symbol && currentInterval == candleData.interval {
                     // Append new bars if symbol and interval match
@@ -83,7 +88,8 @@ public final class MarketDataFile {
                 // Initialize file with new content
                 lines = [
                     candleData.symbol,
-                    String(candleData.interval)
+                    String(candleData.interval),
+                    strategyName
                 ]
                 lines.append(
                     contentsOf: try  candleData.bars.map { String(data: try encoder.encode($0), encoding: .utf8) ?? "" }
@@ -96,18 +102,18 @@ public final class MarketDataFile {
         }
     }
     
-    private func loadCandleData() -> CandleData? {
+    func loadCandleData() -> CandleData? {
         do {
             let content = try String(contentsOfFile: fileUrl.path(), encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
             
-            guard lines.count > 2,
+            guard lines.count > 3,
                   let interval = TimeInterval(lines[1]) else {
                 return nil
             }
             
             let decoder = JSONDecoder()
-            let bars = lines.dropFirst(2).compactMap { line -> Bar? in
+            let bars = lines.dropFirst(3).compactMap { line -> Bar? in
                 guard let data = line.data(using: .utf8) else { return nil }
                 return try? decoder.decode(Bar.self, from: data)
             }

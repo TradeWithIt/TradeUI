@@ -29,7 +29,12 @@ struct DashboardView: View {
             trades.selectedWatcher = trades.watchers.first?.value.id
         }
         .task {
-            viewModel.updateMarketData(trades.marketData)
+            Task {
+                viewModel.updateMarketData(trades.market)
+            }
+            Task {
+                viewModel.loadSnapshotFileNames(url: trades.fileProvider.snapshotsDirectory)
+            }
         }
     }
     
@@ -55,26 +60,9 @@ struct DashboardView: View {
     var sidebar: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
-                ForEach(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
-                    HStack {
-                        Text("\(watcher.symbol): \(viewModel.formatCandleTimeInterval(watcher.interval))")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .bold(trades.selectedWatcher == watcher.id)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                trades.selectedWatcher = watcher.id
-                            }
-                        Spacer(minLength: 0)
-                        Button(action: {
-                            cancelMarketData(watcher.symbol, interval: watcher.interval)
-                        }, label: {
-                            Image(systemName: "xmark")
-                                .resizable()
-                        })
-                        .buttonStyle(PlainButtonStyle())
-                        .frame(width: 12, height: 12)
-                    }
-                }
+                activeAssets
+                Divider()
+                fileSnapshots
             }
             .padding(.horizontal)
         }
@@ -85,6 +73,75 @@ struct DashboardView: View {
                 watchedAssets.forEach {
                     self.marketData($0.symbol, interval: $0.interval)
                 }
+            }
+        }
+        .sheet(isPresented: Binding<Bool>(
+            get: { viewModel.isPresentingSgeet != nil },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.isPresentingSgeet = nil
+                }
+            }
+        )) {
+            switch viewModel.isPresentingSgeet {
+            case .snapshotPreview:
+                SnapshotView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
+            case .snapshotPlayback:
+                SnapshotPlaybackView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
+            default:
+                EmptyView()
+            }
+        }
+    }
+    
+    var activeAssets: some View {
+        ForEach(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
+            HStack {
+                Text("\(watcher.symbol): \(viewModel.formatCandleTimeInterval(watcher.interval))")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .bold(trades.selectedWatcher == watcher.id)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        trades.selectedWatcher = watcher.id
+                    }
+                Spacer(minLength: 0)
+                Button(action: {
+                    cancelMarketData(watcher.symbol, interval: watcher.interval)
+                }, label: {
+                    Image(systemName: "xmark")
+                        .resizable()
+                })
+                .buttonStyle(PlainButtonStyle())
+                .frame(width: 12, height: 12)
+            }
+        }
+    }
+    
+    var fileSnapshots: some View {
+        ForEach(viewModel.snapshotFileNames, id: \.self) { fileName in
+            VStack {
+                Text(fileName)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                HStack {
+                    Button(action: {
+                        viewModel.selectedSnapshot = fileName
+                        viewModel.isPresentingSgeet = .snapshotPreview
+                    }) {
+                        Image(systemName: "eye.fill")
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(maxWidth: .infinity)
+                    
+                    Button(action: {
+                        viewModel.selectedSnapshot = fileName
+                        viewModel.isPresentingSgeet = .snapshotPlayback
+                    }) {
+                        Image(systemName: "play.fill")
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(maxWidth: .infinity)
+                }.padding(.top, 4)
             }
         }
     }

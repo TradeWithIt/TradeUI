@@ -17,7 +17,8 @@ public struct Asset: Codable, Hashable {
     private let lock: NIOLock = NIOLock()
     private var cancellable: AnyCancellable?
     
-    let marketData: MarketData
+    let market: Market
+    let fileProvider: MarketDataFileProvider
     var watchers: [String: Watcher] = [:]
     var selectedWatcher: String?
     
@@ -30,21 +31,25 @@ public struct Asset: Codable, Hashable {
         }
     }
     
-    public init(marketData: MarketData = InteractiveBrokers()) {
-        self.marketData = marketData
+    public init(
+        market: Market = InteractiveBrokers(),
+        fileProvider: MarketDataFileProvider = MarketDataFileProvider()
+    ) {
+        self.market = market
+        self.fileProvider = fileProvider
     }
     
     public func initializeSockets() {
         Task {
             try await Task.sleep(for: .milliseconds(200))
-            try marketData.connect()
+            try market.connect()
         }
     }
     
     // MARK: - Market Data
     
     public func cancelMarketData(_ asset: Asset) {
-        marketData.unsubscribeMarketData(symbol: asset.symbol, interval: asset.interval)
+        market.unsubscribeMarketData(symbol: asset.symbol, interval: asset.interval)
         lock.withLockVoid {
             watchers.removeValue(forKey: asset.id)
         }
@@ -56,7 +61,8 @@ public struct Asset: Codable, Hashable {
             let watcher = try Watcher(
                 symbol: asset.symbol,
                 interval: asset.interval,
-                marketData: marketData
+                marketData: market, 
+                fileProvider: fileProvider
             )
             watchers[asset.id] = watcher
         }
@@ -69,7 +75,8 @@ public struct Asset: Codable, Hashable {
             let watcher = try Watcher(
                 symbol: contract.localSymbol,
                 interval: interval,
-                marketData: marketData
+                marketData: market,
+                fileProvider: fileProvider
             )
             watchers[assetId] = watcher
         }

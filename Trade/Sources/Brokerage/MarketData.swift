@@ -1,12 +1,18 @@
 import Foundation
 import Combine
 
+public enum MarketDataKey: String {
+    case bufferInfo = "buffer"
+    case snapshotDateInfo = "snapshot.date"
+    case snapshotPlaybackSpeedInfo = "snapshot.playback.speed"
+}
+
 public protocol MarketData {
     init()
     /// Connect Service
     func connect() throws
     /// Asset symbol search
-    func marketData(symbol:  Symbol, interval: TimeInterval, buffer: TimeInterval) throws -> AnyPublisher<CandleData, Never>
+    func marketData(symbol:  Symbol, interval: TimeInterval, userInfo: [String: Any]) throws -> AnyPublisher<CandleData, Never>
     /// Requests price history with continues real time updates for asset.
     /// - Parameters:
     ///   - product: Asset symbol product information
@@ -15,7 +21,7 @@ public protocol MarketData {
     func marketData(
         contract product: any Contract,
         interval: TimeInterval,
-        buffer: TimeInterval
+        userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never>
     /// Cancel real time market data updates
     /// - Parameters:
@@ -28,6 +34,6 @@ public extension MarketData {
     /// Requests price history with continues real time updates for asset with 1minute bar size and 15h of history.
     /// - Parameter symbol: Asset symbol
     func marketData(symbol:  Symbol) throws -> AnyPublisher<CandleData, Never> {
-        try marketData(symbol: symbol, interval: 60, buffer: 54000)
+        try marketData(symbol: symbol, interval: 60, userInfo: [MarketDataKey.bufferInfo.rawValue: 54000])
     }
 }

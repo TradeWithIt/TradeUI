@@ -1,30 +1,33 @@
 import Foundation
 import Combine
 
-import Foundation
-import Combine
-
 public class MarketDataFileProvider: MarketData {
     public enum Error: Swift.Error, LocalizedError {
         case missingDirectory(String)
         case missingFile(String)
     }
     
-    public private(set) var snapshotsDirectory: URL!
+    public private(set) var snapshotsDirectory: URL?
+    private var activeSubscriptions: [MarketDataFile] = []
     
     required public init() {
         let fileManager = FileManager.default
-        let directory = try? fileManager.url(
-            for: .downloadsDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: false
-        )
+        var directory: URL? = nil
+        do {
+            directory = try fileManager.url(
+                for: .downloadsDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: false
+            )
+        } catch {
+            print("Error reading file: \(error)")
+        }
         snapshotsDirectory = directory?.appendingPathComponent("Snapshots")
     }
     
     public func connect() throws {
-        guard snapshotsDirectory != nil else {
+        guard let snapshotsDirectory else {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         
@@ -35,25 +38,64 @@ public class MarketDataFileProvider: MarketData {
         }
     }
     
-    public func save(symbol: Symbol, interval: TimeInterval, bars: [Bar]) {
-        let fileName = "\(symbol):\(interval)"
+    public func save(symbol: Symbol, interval: TimeInterval, bars: [Bar], strategyName strategy: String) throws {
+        guard let snapshotsDirectory else {
+            throw Error.missingDirectory("Failed to initiate directory.")
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
+        let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: Date()))"
         let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
         let marketDataFile = MarketDataFile(fileUrl: fileURL)
         marketDataFile.save(
+            strategyName: strategy,
             candleData: CandleData(symbol: symbol, interval: interval, bars: bars)
         )
     }
     
-    public func unsubscribeMarketData(symbol: Symbol, interval: TimeInterval) {
-        assertionFailure("unsubscribe from market data, doesn't work for files.")
-    }
-    
-    public func marketData(symbol: Symbol, interval: TimeInterval, buffer: TimeInterval) throws -> AnyPublisher<CandleData, Never> {
-        guard snapshotsDirectory != nil else {
+    public func loadFile(name: String) throws -> CandleData? {
+        guard let snapshotsDirectory else {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         
-        let fileName = "\(symbol):\(interval)"
+        let fileURL = snapshotsDirectory.appendingPathComponent(name + ".txt")
+        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        return marketDataFile.loadCandleData()
+    }
+    
+    public func loadFileData(forSymbol symbol: Symbol, interval: TimeInterval, snapshot: Date) throws -> CandleData? {
+        guard let snapshotsDirectory else {
+            throw Error.missingDirectory("Failed to initiate directory.")
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
+        
+        let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: Date()))"
+        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
+        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        return marketDataFile.loadCandleData()
+    }
+    
+    public func unsubscribeMarketData(symbol: Symbol, interval: TimeInterval) {
+        activeSubscriptions.removeAll(where: {
+            let path = $0.fileUrl.lastPathComponent
+            return path.contains("\(symbol)-\(interval)")
+        })
+    }
+    
+    public func marketData(symbol: Symbol, interval: TimeInterval, userInfo: [String: Any]) throws -> AnyPublisher<CandleData, Never> {
+        guard let snapshotsDirectory else {
+            throw Error.missingDirectory("Failed to initiate directory.")
+        }
+        
+        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
+        
+        let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: snapshotDate))"
         let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -61,10 +103,11 @@ public class MarketDataFileProvider: MarketData {
         }
         
         let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        activeSubscriptions.append(marketDataFile)
         return try marketDataFile.readBars(
             symbol: symbol,
             interval: interval,
-            speedFactor: buffer,
+            speedFactor: playbackSpeed,
             loadAllAtOnce: false
         )
     }
@@ -72,13 +115,18 @@ public class MarketDataFileProvider: MarketData {
     public func marketData(
         contract product: any Contract,
         interval: TimeInterval,
-        buffer: TimeInterval
+        userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        guard snapshotsDirectory != nil else {
+        guard let snapshotsDirectory else {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         
-        let fileName = "\(product.symbol):\(interval)"
+        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
+        
+        let fileName = "\(product.symbol)-\(interval)_\(dateFormatter.string(from: snapshotDate))"
         let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -86,10 +134,11 @@ public class MarketDataFileProvider: MarketData {
         }
         
         let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        activeSubscriptions.append(marketDataFile)
         return try marketDataFile.readBars(
             symbol: product.symbol,
             interval: interval,
-            speedFactor: buffer,
+            speedFactor: playbackSpeed,
             loadAllAtOnce: false
         )
     }

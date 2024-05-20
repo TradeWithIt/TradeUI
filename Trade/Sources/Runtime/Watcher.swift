@@ -20,6 +20,7 @@ public class Watcher: Identifiable {
     public private(set) var interval: TimeInterval
     public private(set) var strategy: Strategy
     
+    private let userInfo: [String: Any]
     private let strategyType: Strategy.Type
     private let queue = DispatchQueue.global(qos: .userInitiated)
     private var cancellable: AnyCancellable?
@@ -46,21 +47,27 @@ public class Watcher: Identifiable {
         symbol: Symbol,
         interval: TimeInterval,
         strategyType: Strategy.Type = SupriseBarStrategy.self,
-        marketData: MarketData
+        marketData: MarketData,
+        fileProvider: CandleFileProvider,
+        userInfo: [String : Any] = [:]
     ) throws {
         self.symbol = symbol
         self.interval = interval
+        self.userInfo = userInfo
         self.strategyType = strategyType
         self.strategy = strategyType.init(candles: [], multiplier: interval.strategyMultiplier)
         
-        try self.setUpMarketData(marketData)
+        try self.setUpMarketData(marketData, fileProvider: fileProvider)
     }
     
-    private func setUpMarketData(_ marketData: MarketData) throws {
+    private func setUpMarketData(_ marketData: MarketData, fileProvider: CandleFileProvider) throws {
+        var userInfo = self.userInfo
+        userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount)
+        
         self.cancellable = try marketData.marketData(
             symbol: symbol,
             interval: interval,
-            buffer: interval * Double(maxCandlesCount)
+            userInfo: userInfo
         )
         .throttle(for: .milliseconds(200), scheduler: queue, latest: false)
         .receive(on: queue)
@@ -73,11 +80,37 @@ public class Watcher: Identifiable {
         .compactMap { [weak self] strategy -> (any Strategy)? in
             self?.enterTradeIfStrategyIsValidated(strategy)
         }
+        .map { [weak self] strategy -> (any Strategy) in
+            if let self, strategy.patternIdentified {
+                DispatchQueue.global().async {
+                    self.snapshotData(fileProvider: fileProvider, candles: strategy.candles)
+                }
+            }
+            return strategy
+        }
         .receive(on: DispatchQueue.main)
         .sink { [weak self] strategy in
             self?.strategy = strategy
         }
     }
+    
+    // MARK: File Provider
+    
+    private func snapshotData(fileProvider: CandleFileProvider, candles: [any Klines]) {
+        guard let bars = candles as? [Bar] else { return }
+        do {
+            try fileProvider.save(
+                symbol: symbol,
+                interval: interval,
+                bars: bars,
+                strategyName: String(describing: strategyType)
+            )
+        } catch {
+            print("🔴 Failed to save snapshot data for:", id)
+        }
+    }
+    
+    // MARK: Market Data
     
     private func updateBars(_ bars: [Bar]) -> [Bar] {
         var candles = self.candles
