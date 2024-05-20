@@ -11,7 +11,7 @@ public protocol MarketData {
     init()
     /// Connect Service
     func connect() throws
-    /// Asset symbol search
+    /// Requests price history with continues real time updates for asset symbol.
     func marketData(symbol:  Symbol, interval: TimeInterval, userInfo: [String: Any]) throws -> AnyPublisher<CandleData, Never>
     /// Requests price history with continues real time updates for asset.
     /// - Parameters:
@@ -19,6 +19,18 @@ public protocol MarketData {
     ///   - interval: Bar interval
     ///   - buffer: Default to 54000 for 1minute
     func marketData(
+        contract product: any Contract,
+        interval: TimeInterval,
+        userInfo: [String: Any]
+    ) throws -> AnyPublisher<CandleData, Never>
+    /// Requests price history snapshot with continues real time updates for asset symbol
+    func marketDataSnapshot(
+        symbol:  Symbol,
+        interval: TimeInterval,
+        userInfo: [String: Any]
+    ) throws -> AnyPublisher<CandleData, Never>
+    /// Requests price history snapshot with continues real time updates for asset symbol
+    func marketDataSnapshot(
         contract product: any Contract,
         interval: TimeInterval,
         userInfo: [String: Any]

@@ -112,6 +112,44 @@ public class MarketDataFileProvider: MarketData {
         )
     }
     
+    public func marketDataSnapshot(
+        symbol:  Symbol,
+        interval: TimeInterval,
+        userInfo: [String: Any]
+    ) throws -> AnyPublisher<CandleData, Never> {
+        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let mockCandleData = try loadFileData(
+            forSymbol: symbol,
+            interval: interval,
+            snapshot: snapshotDate
+        )
+        return Just(mockCandleData ?? CandleData(
+            symbol: symbol,
+            interval: interval,
+            bars: []
+        ))
+            .eraseToAnyPublisher()
+    }
+    
+    public func marketDataSnapshot(
+        contract product: any Contract,
+        interval: TimeInterval,
+        userInfo: [String: Any]
+    ) throws -> AnyPublisher<CandleData, Never> {
+        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let mockCandleData = try loadFileData(
+            forSymbol: product.symbol,
+            interval: interval,
+            snapshot: snapshotDate
+        )
+        return Just(mockCandleData ?? CandleData(
+            symbol: product.symbol,
+            interval: interval,
+            bars: []
+        ))
+            .eraseToAnyPublisher()
+    }
+    
     public func marketData(
         contract product: any Contract,
         interval: TimeInterval,

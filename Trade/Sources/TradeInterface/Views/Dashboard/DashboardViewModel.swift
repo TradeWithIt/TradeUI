@@ -78,6 +78,41 @@ extension DashboardView {
             }
         }
         
+        func saveHistoryToFile(symbol: Symbol, interval: TimeInterval, fileProvider: MarketDataFileProvider) throws {
+            let calendar = Calendar.current
+            let timeZone = TimeZone.current
+
+            // Set up date components for the start of April 2024
+            var startDateComponents = DateComponents()
+            startDateComponents.year = 2024
+            startDateComponents.month = 4
+            startDateComponents.day = 1
+            startDateComponents.timeZone = timeZone
+
+            // Create the start date
+            let startDate = calendar.date(from: startDateComponents)!
+            try market?.marketDataSnapshot(
+                symbol: symbol,
+                interval: interval,
+                userInfo: [MarketDataKey.bufferInfo.rawValue: -startDate.timeIntervalSinceNow]
+            )
+            .receive(on: DispatchQueue.global())
+            .sink(receiveCompletion: { completion in
+                if case .failure(let error) = completion {
+                    print("🔴 errorMessage: ", error)
+                }
+                print("saved history snapshot to file")
+            }, receiveValue: { candleData in
+                do {
+                    print("Saving data to file:", candleData.bars.count)
+                    try fileProvider.save(symbol: candleData.symbol, interval: candleData.interval, bars: candleData.bars, strategyName: "")
+                } catch {
+                    print("Something went wrong", error)
+                }
+            })
+            .store(in: &cancellables)
+        }
+        
         func formatCandleTimeInterval(_ interval: TimeInterval) -> String {
             let formatter = DateComponentsFormatter()
             formatter.unitsStyle = .abbreviated

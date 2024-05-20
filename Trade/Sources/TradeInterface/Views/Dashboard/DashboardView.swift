@@ -60,6 +60,19 @@ struct DashboardView: View {
     var sidebar: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
+                Button("Load data") {
+                    do {
+                        try viewModel.saveHistoryToFile(
+                            symbol: "MESM4",
+                            interval: 60,
+                            fileProvider: trades.fileProvider
+                        )
+                    } catch {
+                        print("Failed saving hisotry to file", error)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(maxWidth: .infinity)
                 activeAssets
                 Divider()
                 fileSnapshots

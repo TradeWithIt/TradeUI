@@ -63,13 +63,12 @@ public class Watcher: Identifiable {
     private func setUpMarketData(_ marketData: MarketData, fileProvider: CandleFileProvider) throws {
         var userInfo = self.userInfo
         userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount)
-        
         self.cancellable = try marketData.marketData(
             symbol: symbol,
             interval: interval,
             userInfo: userInfo
         )
-        .throttle(for: .milliseconds(200), scheduler: queue, latest: false)
+        .throttle(for: .milliseconds(marketData is MarketDataFileProvider ? 0 : 200), scheduler: queue, latest: false)
         .receive(on: queue)
         .compactMap { [weak self] candles -> [Bar]? in
             self?.updateBars(candles.bars)
