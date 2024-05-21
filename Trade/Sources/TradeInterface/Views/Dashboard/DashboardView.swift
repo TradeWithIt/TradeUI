@@ -60,10 +60,11 @@ struct DashboardView: View {
     var sidebar: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
+                Divider()
                 Button("Load data") {
                     do {
                         try viewModel.saveHistoryToFile(
-                            symbol: "MESM4",
+                            symbol: "M2KM4",
                             interval: 60,
                             fileProvider: trades.fileProvider
                         )
@@ -73,6 +74,7 @@ struct DashboardView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(maxWidth: .infinity)
+                Divider()
                 activeAssets
                 Divider()
                 fileSnapshots

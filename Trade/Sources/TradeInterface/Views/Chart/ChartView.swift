@@ -159,22 +159,22 @@ public struct ChartView<O: View, B: View>: View {
             formatter.calendar = calendar
             formatter.dateFormat = "HH:mm:ss a\ndd.MM"
             
-            var date = Date(timeIntervalSince1970: x.lowerBound + scale.xStep / 2)
+            var date = Date(timeIntervalSince1970: x.lowerBound + scale.xGuideStep / 2)
             while date <= Date(timeIntervalSince1970: x.upperBound) {
                 let stringDate = formatter.string(from: date)
                 times.append(stringDate)
-                date = calendar.date(byAdding: .second, value: Int(scale.xStep), to: date)!
+                date = calendar.date(byAdding: .second, value: Int(scale.xGuideStep), to: date)!
             }
             withAnimation {
                 labelsHorizontal = times
             }
         }
-        if let y = y, scale.yStep > 0 {
+        if let y = y, scale.yGuideStep > 0 {
             let vert: [Double] = Array(
                 stride(
                     from: y.lowerBound,
                     to: y.upperBound,
-                    by: scale.yStep
+                    by: scale.yGuideStep
                 )
             ).reversed()
             withAnimation {
