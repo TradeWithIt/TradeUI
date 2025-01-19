@@ -171,6 +171,7 @@ public class InteractiveBrokers: Market {
             contract: contract,
             barSize: size,
             barSource: IBBarSource.trades,
+//            barSource: IBBarSource.aggTrades,
             lookback: duration
         )
         
