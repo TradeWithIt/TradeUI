@@ -24,6 +24,7 @@ public class Watcher: Identifiable {
     private let strategyType: Strategy.Type
     private let queue = DispatchQueue.global(qos: .userInitiated)
     private var cancellable: AnyCancellable?
+    private var counter: Int = 0
     private var candles: OrderedSet<Bar> {
         OrderedSet((strategy.candles as? [Bar]) ?? [])
     }
@@ -81,10 +82,22 @@ public class Watcher: Identifiable {
         }
         .map { [weak self] strategy -> (any Strategy) in
             if let self, strategy.patternIdentified {
+                self.counter = 9
                 DispatchQueue.global().async {
                     self.snapshotData(fileProvider: fileProvider, candles: strategy.candles)
                 }
             }
+            
+            if let self, counter == 1 {
+                DispatchQueue.global().async {
+                    self.snapshotData(fileProvider: fileProvider, candles: strategy.candles)
+                }
+            }
+            
+            if let self, counter > 0 {
+                counter -= 1
+            }
+            
             return strategy
         }
         .receive(on: DispatchQueue.main)
