@@ -1,7 +1,7 @@
 import SwiftUI
 
 #if os(macOS)
-extension String: Identifiable {
+extension String: @retroactive Identifiable {
     public var id: String { self }
 }
 

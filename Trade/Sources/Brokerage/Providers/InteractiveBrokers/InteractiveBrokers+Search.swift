@@ -44,7 +44,7 @@ extension InteractiveBrokers {
             symbol: Symbol,
             productType: [IBSecuritiesType],
             productCountry: [String] = ["US"]
-        ) throws -> AnyPublisher<[Product], Error> {
+        ) throws -> AnyPublisher<[Product], Swift.Error> {
             let url = URL(string: "https://www.interactivebrokers.com/webrest/search/products-by-filters")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
@@ -61,7 +61,7 @@ extension InteractiveBrokers {
                 .map(\.data)
                 .decode(type: Product.Response.self, decoder: JSONDecoder())
                 .map { Array($0.products) }
-                .mapError { $0 as! Error }
+                .mapError { $0 as! Swift.Error }
                 .eraseToAnyPublisher()
         }
         
@@ -101,7 +101,7 @@ extension InteractiveBrokers {
                 productCountry: [String] = ["US"],
                 productSymbol: String,
                 newProduct: String = "all",
-                productType: [String] = ["FUT"],
+                productType: [String] = ["STK"],
                 domain: String = "jp"
             ) {
                 self.pageNumber = pageNumber

@@ -8,7 +8,7 @@ public class InteractiveBrokers: Market {
         var interval: TimeInterval
     }
     
-    private let client = IBClient.live(id: 0, type: .gateway)
+    private let client = IBClient.paper(id: 0, type: .gateway)
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: Set<String> = []
     private var unsubscribeMarketData: Set<Asset> = []
@@ -19,6 +19,7 @@ public class InteractiveBrokers: Market {
     
     required public init() {
         client.eventFeed.sink {[weak self] anyEvent in
+            print(anyEvent.self)
             switch anyEvent {
             case let event as IBManagedAccounts:
                 self?.identifiers.formUnion(event.identifiers)
@@ -33,8 +34,8 @@ public class InteractiveBrokers: Market {
         try client.connect()
     }
     
-    public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Error> {
-        try Product.fetchProducts(symbol: symbol, productType: [.future])
+    public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error> {
+        try Product.fetchProducts(symbol: symbol, productType: [.stock])
             .map { products in
                 products as [any Contract]
             }
@@ -54,7 +55,7 @@ public class InteractiveBrokers: Market {
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
-        let contract = IBContract.future(localSymbol: symbol, currency: "USD", exchange: .CME)
+        let contract = IBContract.equity(symbol, currency: "USD")
         unsubscribeMarketData.remove(Asset(symbol: symbol, interval: interval))
         return try historicBarPublisher(
             contract: contract,
@@ -68,8 +69,8 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.future(
-            localSymbol: product.localSymbol,
+        let contract = IBContract.crypto(
+            product.localSymbol,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )
@@ -87,7 +88,7 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.future(localSymbol: symbol, currency: "USD", exchange: .CME)
+        let contract = IBContract.crypto(symbol, currency: "USD")
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         return try historicBarPublisher(
             contract: contract,
@@ -101,8 +102,8 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.future(
-            localSymbol: product.localSymbol,
+        let contract = IBContract.crypto(
+            product.localSymbol,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )
@@ -189,10 +190,10 @@ public class InteractiveBrokers: Market {
                 case let event as OrderEvent:
                     return event
                 case let event as IBServerError:
-                    throw Error.requestError(event.message)
+                    throw TradeError.requestError(event.message)
                 default:
                     let message = "thsi should never happen but received anyway \(response)"
-                    throw Error.somethingWentWrong(message)
+                    throw TradeError.somethingWentWrong(message)
                 }
             }
             .eraseToAnyPublisher()

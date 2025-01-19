@@ -41,8 +41,12 @@ public struct Asset: Codable, Hashable {
     
     public func initializeSockets() {
         Task {
-            try await Task.sleep(for: .milliseconds(200))
-            try market.connect()
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+                try market.connect()
+            } catch {
+                print("initializeSockets failed with error: ", error)
+            }
         }
     }
     

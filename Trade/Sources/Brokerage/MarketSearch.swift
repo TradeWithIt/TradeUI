@@ -6,5 +6,5 @@ public protocol MarketSearch {
     /// Connect Service
     func connect() throws
     /// Asset symbol search
-    func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Error>
+    func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error>
 }
