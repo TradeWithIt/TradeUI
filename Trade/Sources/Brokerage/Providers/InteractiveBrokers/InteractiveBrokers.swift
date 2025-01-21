@@ -84,11 +84,17 @@ public class InteractiveBrokers: Market {
     }
     
     public func marketDataSnapshot(
-        symbol:  Symbol,
+        symbol: Symbol,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.crypto(symbol, currency: "USD")
+        let contract = IBContract(
+            symbol: symbol,
+            secType: IBSecuritiesType(rawValue: type) ?? .stock,
+            currency: "USD",
+            exchange: .PAXOS
+        )
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         return try historicBarPublisher(
             contract: contract,
@@ -99,11 +105,13 @@ public class InteractiveBrokers: Market {
     
     public func marketDataSnapshot(
         contract product: any Contract,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.crypto(
-            product.localSymbol,
+        let contract = IBContract(
+            symbol: product.localSymbol,
+            secType: IBSecuritiesType(rawValue: type) ?? .stock,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )

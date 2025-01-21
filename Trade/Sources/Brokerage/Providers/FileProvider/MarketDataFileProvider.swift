@@ -114,6 +114,7 @@ public class MarketDataFileProvider: MarketData {
     
     public func marketDataSnapshot(
         symbol:  Symbol,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
@@ -133,6 +134,7 @@ public class MarketDataFileProvider: MarketData {
     
     public func marketDataSnapshot(
         contract product: any Contract,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {

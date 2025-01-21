@@ -78,14 +78,19 @@ extension DashboardView {
             }
         }
         
-        func saveHistoryToFile(symbol: Symbol, interval: TimeInterval, fileProvider: MarketDataFileProvider) throws {
+        func saveHistoryToFile(
+            symbol: Symbol,
+            type: String,
+            interval: TimeInterval,
+            fileProvider: MarketDataFileProvider
+        ) throws {
             let calendar = Calendar.current
             let timeZone = TimeZone.current
 
             // Set up date components for the start of April 2024
             var startDateComponents = DateComponents()
-            startDateComponents.year = 2024
-            startDateComponents.month = 4
+            startDateComponents.year = 2025
+            startDateComponents.month = 1
             startDateComponents.day = 1
             startDateComponents.timeZone = timeZone
 
@@ -93,6 +98,7 @@ extension DashboardView {
             let startDate = calendar.date(from: startDateComponents)!
             try market?.marketDataSnapshot(
                 symbol: symbol,
+                type: type,
                 interval: interval,
                 userInfo: [MarketDataKey.bufferInfo.rawValue: -startDate.timeIntervalSinceNow]
             )

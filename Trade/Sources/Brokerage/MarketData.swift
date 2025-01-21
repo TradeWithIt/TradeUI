@@ -25,13 +25,15 @@ public protocol MarketData {
     ) throws -> AnyPublisher<CandleData, Never>
     /// Requests price history snapshot with continues real time updates for asset symbol
     func marketDataSnapshot(
-        symbol:  Symbol,
+        symbol: Symbol,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never>
     /// Requests price history snapshot with continues real time updates for asset symbol
     func marketDataSnapshot(
         contract product: any Contract,
+        type: String,
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never>

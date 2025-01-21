@@ -64,7 +64,8 @@ struct DashboardView: View {
                 Button("Load data") {
                     do {
                         try viewModel.saveHistoryToFile(
-                            symbol: "M2KM4",
+                            symbol: "BTC",
+                            type: "CRYPTO",
                             interval: 60,
                             fileProvider: trades.fileProvider
                         )
