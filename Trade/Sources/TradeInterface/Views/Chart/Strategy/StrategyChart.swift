@@ -59,9 +59,12 @@ public struct StrategyChart: View {
                 )
                 .stroke(Color.indigo)
                 
-                Path.quadCurvedPathWithPoints(
+                Path.pathWithPoints(
                     points: strategy.phaseTermMa.enumerated()
-                        .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
+                        .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) })
+                        .simplifyLine(epsilon: 38)
+                        .map({ $0.0 })
+                    ,
                     canvas: frame
                 )
                 .stroke(Color.yellow)
@@ -77,7 +80,7 @@ public struct StrategyChart: View {
                     let max = Swift.max(maxBar.priceOpen, maxBar.priceClose)
                     let min = Swift.min(minBar.priceOpen, minBar.priceClose)
                     Rectangle()
-                        .fill(strategy.phases[i].type == .time ? Color.green.opacity(0.1) : Color.red.opacity(0.1) )
+                        .fill(phaseColor(for: strategy.phases[i].type))
                         .frame(
                             width: Swift.max(
                                 0,
@@ -103,5 +106,16 @@ public struct StrategyChart: View {
                         )
                 }
             }
+    }
+    
+    private func phaseColor(for type: PhaseType) -> Color {
+        switch type {
+        case .sideways:
+            return Color.blue.opacity(0.25)
+        case .uptrend:
+            return Color.green.opacity(0.25)
+        case .downtrend:
+            return Color.red.opacity(0.25)
+        }
     }
 }

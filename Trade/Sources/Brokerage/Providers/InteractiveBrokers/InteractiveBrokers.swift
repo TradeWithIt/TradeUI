@@ -31,7 +31,11 @@ public class InteractiveBrokers: Market {
     }
     
     public func connect() throws {
-        try client.connect()
+        do {
+            try client.connect()
+        } catch {
+            print("🔴 failed to connect to Interactive Brokers:", error)
+        }
     }
     
     public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error> {

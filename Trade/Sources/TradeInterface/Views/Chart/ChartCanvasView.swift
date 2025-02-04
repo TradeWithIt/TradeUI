@@ -39,8 +39,11 @@ public struct ChartCanvasView<O: View, B: View>: View {
                 drawGrid(frame: proxy.frame(in: .local))
             }
             canvasBackground(scale, proxy.frame(in: .local))
-            ForEach(data, id: \.timeOpen) { kline in
+            ForEach(Array(data.enumerated()), id: \.element.timeOpen) { index, kline in
                 drawCandle(kline: kline, proxy: proxy)
+                    .onTapGesture {
+                        print("🕯️ Tapped index: \(index), Kline: \(kline)")
+                    }
             }
             canvasOverlay(scale, proxy.frame(in: .local))
         }

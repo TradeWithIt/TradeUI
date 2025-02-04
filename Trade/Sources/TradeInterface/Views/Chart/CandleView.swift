@@ -49,9 +49,6 @@ struct CandleView: View {
                 .frame(width: bodyWidth / 5.0, height: Swift.max(0, bottomKnotHeight))
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            print(kline)
-        }
     }
     
     // MARK: Modifiers

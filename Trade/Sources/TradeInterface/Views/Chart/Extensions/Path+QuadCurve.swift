@@ -53,6 +53,38 @@ extension Path {
         }
     }
 
+    static func pathWithPoints(
+        points: [CGPoint],
+        canvas: CGRect,
+        close: Bool = false,
+        showPoints: Bool = false
+    ) -> Path {
+        var path = Path()
+        guard points.count > 1 else { return path }
+
+        // Move to the starting point
+        path.move(to: points[0])
+
+        // Connect all points with straight lines
+        for i in 1..<points.count {
+            let p2 = points[i]
+            path.addLine(to: p2) // Add a straight line to the next point
+
+            // Optionally add circles to highlight points
+            if showPoints {
+                path.addEllipse(in: CGRect(x: p2.x - 4, y: p2.y - 4, width: 8, height: 8))
+            }
+        }
+
+        // Optionally close the path by connecting to the canvas corner or the starting point
+        if close {
+            path.addLine(to: points[0]) // Close the path to the starting point
+            path.closeSubpath()
+        }
+
+        return path
+    }
+    
     static func quadCurvedPathWithPoints(points: [CGPoint], canvas: CGRect, close: Bool = false, showPoints: Bool = false) -> Path {
         var path = Path()
         guard points.count > 1 else { return path }
