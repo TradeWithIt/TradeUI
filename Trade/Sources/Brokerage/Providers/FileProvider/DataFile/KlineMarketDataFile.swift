@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-public final class MarketDataFile {
+public final class KlineMarketDataFile: MarketDataFile {
     public let fileUrl: URL
     private var timerSubscription: AnyCancellable?
     
@@ -102,7 +102,7 @@ public final class MarketDataFile {
         }
     }
     
-    func loadCandleData() -> CandleData? {
+    public func loadCandleData() -> CandleData? {
         do {
             let content = try String(contentsOfFile: fileUrl.path(), encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
@@ -140,6 +140,7 @@ extension FileHandle {
         var data = Data()
         while true {
             let tempData = self.readData(ofLength: 1)
+            if tempData.isEmpty { return nil }
             if tempData.count == 0 {  // End of file or read error.
                 return nil
             }
@@ -148,6 +149,6 @@ extension FileHandle {
             }
             data.append(tempData)
         }
-        return data
+        return data.isEmpty ? nil : data
     }
 }

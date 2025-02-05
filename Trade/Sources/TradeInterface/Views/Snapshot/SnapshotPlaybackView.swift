@@ -43,7 +43,7 @@ struct SnapshotPlaybackView: View {
                 marketData: fileProvider,
                 fileProvider: fileProvider,
                 userInfo: [
-                    MarketDataKey.snapshotDateInfo.rawValue: information.date,
+                    MarketDataKey.snapshotFileName.rawValue: fileName,
                     MarketDataKey.snapshotPlaybackSpeedInfo.rawValue: 300.0,
                 ]
             )
@@ -53,33 +53,33 @@ struct SnapshotPlaybackView: View {
     }
 }
 
-
+// MESM4-60.0_20-May-2024_12-28-18
+// AAPL-1h-width5
+// AAPL-1h-prominence4.csv
 private extension String {
-    // MESM4-60.0_20-May-2024_12-28-18
-    func decodeFileName() -> (symbol: String, interval: TimeInterval, date: Date)? {
-        let parts = self.split(separator: "_")
-        guard parts.count == 3 else {
-            print("Filename format is incorrect")
-            return nil
+    func decodeFileName() -> (symbol: String, interval: TimeInterval)? {
+        let sanitizedName = self.components(separatedBy: ".").dropLast().joined(separator: ".")
+        let parts = sanitizedName.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: true)
+        guard parts.count == 2 else { return nil }
+
+        let symbol = String(parts[0])
+        let remainder = parts[1].split(separator: "_").first ?? ""
+        var intervalString = ""
+        var unit: String?
+
+        for char in remainder {
+            if char.isNumber || char == "." {
+                intervalString.append(char)
+            } else if char == "h" || char == "m" {
+                unit = String(char)
+                break
+            } else {
+                break
+            }
         }
-        
-        let info = parts[0].split(separator: "-")
-        let symbol = String(info[safe: 0] ?? "")
-        let intervalString = String(info[safe: 1] ?? "")
-        guard let interval = TimeInterval(intervalString) else {
-            print("Invalid interval")
-            return nil
-        }
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy HH-mm-ss"
-        let dateString = parts[1...].joined(separator: " ")
-        
-        guard let date = dateFormatter.date(from: dateString) else {
-            print("Date format is incorrect")
-            return nil
-        }
-        
-        return (symbol, interval, date)
+
+        guard let intervalValue = Double(intervalString) else { return nil }
+        let convertedInterval: TimeInterval = (unit == "h") ? intervalValue * 3600 : (unit == "m") ? intervalValue * 60 : intervalValue
+        return (symbol, convertedInterval)
     }
 }

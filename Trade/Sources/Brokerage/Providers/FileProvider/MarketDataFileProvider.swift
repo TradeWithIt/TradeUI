@@ -5,6 +5,7 @@ public class MarketDataFileProvider: MarketData {
     public enum Error: Swift.Error, LocalizedError {
         case missingDirectory(String)
         case missingFile(String)
+        case wrongFileFormat(String)
     }
     
     public private(set) var snapshotsDirectory: URL?
@@ -39,15 +40,10 @@ public class MarketDataFileProvider: MarketData {
     }
     
     public func save(symbol: Symbol, interval: TimeInterval, bars: [Bar], strategyName strategy: String) throws {
-        guard let snapshotsDirectory else {
-            throw Error.missingDirectory("Failed to initiate directory.")
-        }
-        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
         let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: Date()))"
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
-        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        let marketDataFile = try marketDataFile(fileName)
         marketDataFile.save(
             strategyName: strategy,
             candleData: CandleData(symbol: symbol, interval: interval, bars: bars)
@@ -55,26 +51,12 @@ public class MarketDataFileProvider: MarketData {
     }
     
     public func loadFile(name: String) throws -> CandleData? {
-        guard let snapshotsDirectory else {
-            throw Error.missingDirectory("Failed to initiate directory.")
-        }
-        
-        let fileURL = snapshotsDirectory.appendingPathComponent(name + ".txt")
-        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        let marketDataFile = try marketDataFile(name)
         return marketDataFile.loadCandleData()
     }
     
-    public func loadFileData(forSymbol symbol: Symbol, interval: TimeInterval, snapshot: Date) throws -> CandleData? {
-        guard let snapshotsDirectory else {
-            throw Error.missingDirectory("Failed to initiate directory.")
-        }
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
-        
-        let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: Date()))"
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
-        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+    public func loadFileData(forSymbol symbol: Symbol, interval: TimeInterval, fileName: String) throws -> CandleData? {
+        let marketDataFile = try marketDataFile(fileName)
         return marketDataFile.loadCandleData()
     }
     
@@ -90,19 +72,15 @@ public class MarketDataFileProvider: MarketData {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         
-        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
         let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
-        
-        let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: snapshotDate))"
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
+        let fileURL = snapshotsDirectory.appendingPathComponent(fileName)
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw Error.missingFile("File \(fileName) not found.")
         }
         
-        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        let marketDataFile = try marketDataFile(fileName)
         activeSubscriptions.append(marketDataFile)
         return try marketDataFile.readBars(
             symbol: symbol,
@@ -118,11 +96,11 @@ public class MarketDataFileProvider: MarketData {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
         let mockCandleData = try loadFileData(
             forSymbol: symbol,
             interval: interval,
-            snapshot: snapshotDate
+            fileName: fileName
         )
         return Just(mockCandleData ?? CandleData(
             symbol: symbol,
@@ -138,11 +116,11 @@ public class MarketDataFileProvider: MarketData {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
         let mockCandleData = try loadFileData(
             forSymbol: product.symbol,
             interval: interval,
-            snapshot: snapshotDate
+            fileName: fileName
         )
         return Just(mockCandleData ?? CandleData(
             symbol: product.symbol,
@@ -161,19 +139,15 @@ public class MarketDataFileProvider: MarketData {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         
-        let snapshotDate = userInfo[MarketDataKey.snapshotDateInfo.rawValue] as? Date ?? Date()
+        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
         let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
-        
-        let fileName = "\(product.symbol)-\(interval)_\(dateFormatter.string(from: snapshotDate))"
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName + ".txt")
+        let fileURL = snapshotsDirectory.appendingPathComponent(fileName)
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw Error.missingFile("File \(fileName) not found.")
         }
         
-        let marketDataFile = MarketDataFile(fileUrl: fileURL)
+        let marketDataFile = try marketDataFile(fileName)
         activeSubscriptions.append(marketDataFile)
         return try marketDataFile.readBars(
             symbol: product.symbol,
@@ -181,5 +155,22 @@ public class MarketDataFileProvider: MarketData {
             speedFactor: playbackSpeed,
             loadAllAtOnce: false
         )
+    }
+    
+    private func marketDataFile(_ name: String) throws -> MarketDataFile {
+        guard let snapshotsDirectory else {
+            throw Error.missingDirectory("Failed to initiate directory.")
+        }
+        let fileURL = snapshotsDirectory.appendingPathComponent(name)
+        let marketDataFile: MarketDataFile
+        switch fileURL.pathExtension {
+        case "txt":
+            marketDataFile = KlineMarketDataFile(fileUrl: fileURL)
+        case "csv":
+            marketDataFile = CSVMarketDataFile(fileUrl: fileURL)
+        default:
+            throw Error.wrongFileFormat("Unsuported file format: \(fileURL.pathExtension)")
+        }
+        return marketDataFile
     }
 }

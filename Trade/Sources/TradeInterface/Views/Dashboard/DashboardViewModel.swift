@@ -71,7 +71,7 @@ extension DashboardView {
                 let fileURLs = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
                 snapshotFileNames = fileURLs.compactMap { url in
                     print(url, url.pathExtension)
-                    return url.pathExtension == "txt" ? url.deletingPathExtension().lastPathComponent : nil
+                    return ["txt", "csv"].contains(url.pathExtension) ? url.lastPathComponent : nil
                 }
             } catch {
                 print("Error loading files: \(error)")
