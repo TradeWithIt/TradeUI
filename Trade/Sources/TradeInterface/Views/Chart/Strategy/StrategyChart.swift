@@ -44,7 +44,6 @@ public struct StrategyChart: View {
         ChartView(interval: interval, data: candles)
             .chartOverlay { scale, frame in
                 // Simple Moving Average shorTermLength: Int = 8, longTermLength: Int = 24
-                
                 Path.quadCurvedPathWithPoints(
                     points: strategy.shortTermMA.enumerated()
                         .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
@@ -58,16 +57,28 @@ public struct StrategyChart: View {
                     canvas: frame
                 )
                 .stroke(Color.indigo)
+                                
+                // Support Levels
+                ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
+                    let support = strategy.levels.support[i]
+                    let point = support.level.toPoint(atTime: support.time, scale: scale, canvasSize: frame.size)
+                    Path.pathWithPoints(
+                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
+                        canvas: frame
+                    )
+                    .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
+                }
                 
-                Path.pathWithPoints(
-                    points: strategy.phaseTermMa.enumerated()
-                        .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) })
-                        .simplifyLine(epsilon: 38)
-                        .map({ $0.0 })
-                    ,
-                    canvas: frame
-                )
-                .stroke(Color.yellow)
+                // Resistance  Levels
+                ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
+                    let resistance = strategy.levels.resistance[i]
+                    let point = resistance.level.toPoint(atTime: resistance.time, scale: scale, canvasSize: frame.size)
+                    Path.pathWithPoints(
+                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
+                        canvas: frame
+                    )
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
+                }
             }
             .chartBackground { scale, frame in
                 ForEach(0 ..< strategy.phases.count, id: \.self) { i in
@@ -110,8 +121,6 @@ public struct StrategyChart: View {
     
     private func phaseColor(for type: PhaseType) -> Color {
         switch type {
-        case .sideways:
-            return Color.blue.opacity(0.25)
         case .uptrend:
             return Color.green.opacity(0.25)
         case .downtrend:

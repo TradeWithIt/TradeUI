@@ -43,10 +43,11 @@ public struct ChartView<O: View, B: View>: View {
                     overlay: canvasOverlay,
                     background: canvasBackground
                 )
-                    .onSizeChange($canvasSize)
-                    .contentShape(Rectangle())
-                    .gesture(canvasGesture())
-                    .border(Color.gray, width: 1)
+                .onSizeChange($canvasSize)
+                .contentShape(Rectangle())
+                .gesture(canvasGesture())
+                .border(Color.gray, width: 1)
+                
                 ScaleView(orientation: .vertical, labels: labelsVertical)
                     .frame(width: 80)
                     .contentShape(Rectangle())
@@ -69,11 +70,11 @@ public struct ChartView<O: View, B: View>: View {
         .border(Color.gray, width: 1)
         .onChange(of: data.last?.timeOpen, initial: true) {
             Task {
-                let scale = Scale(data: data, interval: interval)
+                let newScale = Scale(data: data, interval: interval)
                 await MainActor.run {
-                    scaleOriginal = scale
+                    scaleOriginal = newScale
                     if !isManuallyDisplaced {
-                        self.scale = scale
+                        self.scale = newScale
                     }
                     updateScales(x: scale.x, y: scale.y)
                 }
@@ -85,15 +86,17 @@ public struct ChartView<O: View, B: View>: View {
         }
     }
     
+    // MARK: – Gestures
+    
     private func canvasGesture() -> some Gesture {
         DragGesture().onChanged { gesture in
             let scaleX = scaleDrag?.x ?? scaleOriginal.x
             let scaleY = scaleDrag?.y ?? scaleOriginal.y
             let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
             let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitiude
-            scale = .init(
-                x: (scaleX.lowerBound - xValueChange) ..< (scaleX.upperBound - xValueChange),
-                y: (scaleY.lowerBound + yValueChange) ..< (scaleY.upperBound + yValueChange)
+            scale = Scale(
+                x: (scaleX.lowerBound - xValueChange)..<(scaleX.upperBound - xValueChange),
+                y: (scaleY.lowerBound + yValueChange)..<(scaleY.upperBound + yValueChange)
             )
             updateScales(x: scale.x, y: scale.y)
         }.onEnded { _ in
@@ -101,19 +104,16 @@ public struct ChartView<O: View, B: View>: View {
             isManuallyDisplaced = true
         }
     }
-
+    
     private func yRangeGesture() -> some Gesture {
         DragGesture().onChanged { gesture in
-            guard abs(gesture.translation.width) < abs(gesture.translation.height)  else {
-                return
-            }
+            guard abs(gesture.translation.width) < abs(gesture.translation.height) else { return }
             let scaleY = scaleDrag?.y ?? scaleOriginal.y
             let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitiude
-            
             let lower = scaleY.lowerBound - yValueChange
             let upper = scaleY.upperBound + yValueChange
             if lower > 0, upper > 0, lower < upper {
-                scale.y = lower ..< upper
+                scale.y = lower..<upper
                 updateScales(y: scale.y)
             }
         }.onEnded { _ in
@@ -124,16 +124,13 @@ public struct ChartView<O: View, B: View>: View {
     
     private func xRangeGesture() -> some Gesture {
         DragGesture().onChanged { gesture in
-            guard abs(gesture.translation.width) > abs(gesture.translation.height)  else {
-                return
-            }
+            guard abs(gesture.translation.width) > abs(gesture.translation.height) else { return }
             let scaleX = scaleDrag?.x ?? scaleOriginal.x
             let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
-            
             let lower = scaleX.lowerBound - xValueChange
             let upper = scaleX.upperBound + xValueChange
             if lower > 0, upper > 0, lower < upper, (upper - lower) >= 10.0 {
-                scale.x = lower ..< upper
+                scale.x = lower..<upper
                 updateScales(x: scale.x)
             }
         }.onEnded { _ in
@@ -149,7 +146,7 @@ public struct ChartView<O: View, B: View>: View {
         isManuallyDisplaced = false
         updateScales(x: scale.x, y: scale.y)
     }
-
+    
     private func updateScales(x: Range<TimeInterval>? = nil, y: Range<Double>? = nil) {
         if let x = x {
             var times: [String] = []
@@ -161,13 +158,10 @@ public struct ChartView<O: View, B: View>: View {
             
             var date = Date(timeIntervalSince1970: x.lowerBound + scale.xGuideStep / 2)
             while date <= Date(timeIntervalSince1970: x.upperBound) {
-                let stringDate = formatter.string(from: date)
-                times.append(stringDate)
+                times.append(formatter.string(from: date))
                 date = calendar.date(byAdding: .second, value: Int(scale.xGuideStep), to: date)!
             }
-            withAnimation {
-                labelsHorizontal = times
-            }
+            withAnimation { labelsHorizontal = times }
         }
         if let y = y, scale.yGuideStep > 0 {
             let vert: [Double] = Array(
@@ -182,6 +176,7 @@ public struct ChartView<O: View, B: View>: View {
             }
         }
     }
+    
     
     // MARK: Modifiers
     

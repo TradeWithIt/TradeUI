@@ -8,12 +8,6 @@ import SwiftUI
 
 extension Bar: Klines {}
 
-private extension TimeInterval {
-    var strategyMultiplier: Int {
-        self < 900 ? 15 : 4
-    }
-}
-
 @Observable
 public class Watcher: Identifiable {
     public private(set) var symbol: Symbol
@@ -56,7 +50,7 @@ public class Watcher: Identifiable {
         self.interval = interval
         self.userInfo = userInfo
         self.strategyType = strategyType
-        self.strategy = strategyType.init(candles: [], multiplier: interval.strategyMultiplier)
+        self.strategy = strategyType.init(candles: [])
         
         try self.setUpMarketData(marketData, fileProvider: fileProvider)
     }
@@ -148,10 +142,7 @@ public class Watcher: Identifiable {
     }
     
     private func updateStrategy(bars: [Bar]) -> any Strategy {
-        strategyType.init(
-            candles: Array(bars),
-            multiplier: interval.strategyMultiplier
-        )
+        strategyType.init(candles: bars)
     }
     
     private func enterTradeIfStrategyIsValidated(_ strategy: (any Strategy)?) -> (any Strategy)? {

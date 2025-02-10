@@ -21,7 +21,7 @@ struct SnapshotPlaybackView: View {
                     .onAppear(perform: runSimulation)
             }
         }
-        .frame(minWidth: 500, minHeight: 450)
+        .frame(minWidth: 800, minHeight: 450)
         .padding(20)
         .overlay(alignment: .topTrailing) {
             Button("Dismiss") {

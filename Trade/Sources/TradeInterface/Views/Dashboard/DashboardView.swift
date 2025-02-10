@@ -191,7 +191,7 @@ struct DashboardView: View {
             watchedAssets.insert(asset)
             try trades.marketData(asset)
         } catch {
-            print("🔴 Faile to subscribe IB market data with error:", error)
+            print("🔴 Failed to subscribe IB market data with error:", error)
         }
     }
     
@@ -201,7 +201,7 @@ struct DashboardView: View {
             watchedAssets.insert(asset)
             try trades.marketData(contract: contract, interval: interval)
         } catch {
-            print("🔴 Faile to subscribe IB market data with error:", error)
+            print("🔴 Failed to subscribe IB market data with error:", error)
         }
     }
 }
