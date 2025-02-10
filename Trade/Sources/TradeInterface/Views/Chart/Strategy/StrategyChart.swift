@@ -80,43 +80,43 @@ public struct StrategyChart: View {
                     .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
                 }
             }
-            .chartBackground { scale, frame in
-                ForEach(0 ..< strategy.phases.count, id: \.self) { i in
-                    let minBar = candles[strategy.phases[i].range].min(by: { (a, b) -> Bool in
-                        return Swift.min(a.priceOpen, a.priceClose) < Swift.min(b.priceOpen, b.priceClose)
-                    })!
-                    let maxBar = candles[strategy.phases[i].range].max(by: { (a, b) -> Bool in
-                        return Swift.max(a.priceOpen, a.priceClose) < Swift.max(b.priceOpen, b.priceClose)
-                    })!
-                    let max = Swift.max(maxBar.priceOpen, maxBar.priceClose)
-                    let min = Swift.min(minBar.priceOpen, minBar.priceClose)
-                    Rectangle()
-                        .fill(phaseColor(for: strategy.phases[i].type))
-                        .frame(
-                            width: Swift.max(
-                                0,
-                                scale.width(
-                                    candles[strategy.phases[i].range.upperBound].timeClose - candles[strategy.phases[i].range.lowerBound].timeOpen,
-                                    size: frame.size
-                                )
-                            ),
-                            height: Swift.max(
-                                0,
-                                scale.height(
-                                    (max - min),
-                                    size: frame.size
-                                )
-                            )
-                        )
-                        .position(
-                            (min + (max - min) * 0.5).toPoint(
-                                atTime: candles[strategy.phases[i].range.lowerBound].timeOpen + (candles[strategy.phases[i].range.upperBound].timeClose - candles[strategy.phases[i].range.lowerBound].timeOpen) / 2.0,
-                                scale: scale,
-                                canvasSize: frame.size
-                            )
-                        )
-                }
-            }
+//            .chartBackground { scale, frame in
+//                ForEach(0 ..< strategy.phases.count, id: \.self) { i in
+//                    let minBar = candles[strategy.phases[i].range].min(by: { (a, b) -> Bool in
+//                        return Swift.min(a.priceOpen, a.priceClose) < Swift.min(b.priceOpen, b.priceClose)
+//                    })!
+//                    let maxBar = candles[strategy.phases[i].range].max(by: { (a, b) -> Bool in
+//                        return Swift.max(a.priceOpen, a.priceClose) < Swift.max(b.priceOpen, b.priceClose)
+//                    })!
+//                    let max = Swift.max(maxBar.priceOpen, maxBar.priceClose)
+//                    let min = Swift.min(minBar.priceOpen, minBar.priceClose)
+//                    Rectangle()
+//                        .fill(phaseColor(for: strategy.phases[i].type))
+//                        .frame(
+//                            width: Swift.max(
+//                                0,
+//                                scale.width(
+//                                    candles[strategy.phases[i].range.upperBound].timeClose - candles[strategy.phases[i].range.lowerBound].timeOpen,
+//                                    size: frame.size
+//                                )
+//                            ),
+//                            height: Swift.max(
+//                                0,
+//                                scale.height(
+//                                    (max - min),
+//                                    size: frame.size
+//                                )
+//                            )
+//                        )
+//                        .position(
+//                            (min + (max - min) * 0.5).toPoint(
+//                                atTime: candles[strategy.phases[i].range.lowerBound].timeOpen + (candles[strategy.phases[i].range.upperBound].timeClose - candles[strategy.phases[i].range.lowerBound].timeOpen) / 2.0,
+//                                scale: scale,
+//                                canvasSize: frame.size
+//                            )
+//                        )
+//                }
+//            }
     }
     
     private func phaseColor(for type: PhaseType) -> Color {
