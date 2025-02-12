@@ -73,7 +73,7 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.crypto(
+        let contract = IBContract.equity(
             product.localSymbol,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
@@ -91,19 +91,20 @@ public class InteractiveBrokers: Market {
         symbol: Symbol,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract(
             symbol: symbol,
-            secType: IBSecuritiesType(rawValue: type) ?? .stock,
+            secType: IBSecuritiesType(rawValue: type) ?? .crypto,
             currency: "USD",
             exchange: .PAXOS
         )
-        let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         return try historicBarPublisher(
             contract: contract,
             barSize: IBBarSize(timeInterval: interval),
-            duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: Date())
+            duration: DateInterval(start: startDate, end: endDate ?? Date())
         )
     }
     
@@ -111,6 +112,8 @@ public class InteractiveBrokers: Market {
         contract product: any Contract,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract(
@@ -119,11 +122,10 @@ public class InteractiveBrokers: Market {
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )
-        let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         return try historicBarPublisher(
             contract: contract,
             barSize: IBBarSize(timeInterval: interval),
-            duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: Date())
+            duration: DateInterval(start: startDate, end: endDate ?? Date())
         )
     }
     

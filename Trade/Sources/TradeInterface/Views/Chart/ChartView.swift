@@ -20,6 +20,17 @@ public struct ChartView<O: View, B: View>: View {
         scale.x != scaleOriginal.x || scale.y != scaleOriginal.y
     }
     
+    private var intervalString: String {
+        let minutes = interval / 60
+        if minutes < 1 {
+            return "\(Int(interval))s"
+        } else if minutes < 60 {
+            return "\(Int(minutes))m"
+        } else {
+            return "\(Int(minutes / 60))h"
+        }
+    }
+    
     public init(
         interval: TimeInterval,
         data: [Klines],
@@ -68,6 +79,16 @@ public struct ChartView<O: View, B: View>: View {
             }
         }
         .border(Color.gray, width: 1)
+        .overlay(alignment: .topLeading) {
+            Text(intervalString)
+                .font(.caption)
+                .bold()
+                .foregroundColor(.white)
+                .padding(6)
+                .background(Color.black.opacity(0.7))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding()
+        }
         .onChange(of: data.last?.timeOpen, initial: true) {
             Task {
                 let newScale = Scale(data: data, interval: interval)

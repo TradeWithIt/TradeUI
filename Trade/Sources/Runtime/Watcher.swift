@@ -24,9 +24,10 @@ public class Watcher: Identifiable {
     }
     
     private var maxCandlesCount: Int {
+        let targetIntervals: [TimeInterval] = [900.0, 3600.0, 7200.0]
+        let multiplier: Int = targetIntervals.first(where: { $0 > interval }).map({ Int($0 / interval) }) ?? 1
         // Higher 15min frame or 4 bars if trading in over 15min resolution.
-        let minimumCandleGroupCount = max(4, Int(900.0 / interval))
-        return minimumCandleGroupCount * 60
+        return 200 * multiplier
     }
     
     public var id: String {
@@ -57,7 +58,7 @@ public class Watcher: Identifiable {
     
     private func setUpMarketData(_ marketData: MarketData, fileProvider: CandleFileProvider) throws {
         var userInfo = self.userInfo
-        userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount)
+        userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount) * 2.0
         self.cancellable = try marketData.marketData(
             symbol: symbol,
             interval: interval,

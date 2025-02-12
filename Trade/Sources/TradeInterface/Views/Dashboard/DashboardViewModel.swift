@@ -87,20 +87,31 @@ extension DashboardView {
             let calendar = Calendar.current
             let timeZone = TimeZone.current
 
-            // Set up date components for the start of April 2024
+            // Set up date components for the start
             var startDateComponents = DateComponents()
-            startDateComponents.year = 2025
-            startDateComponents.month = 1
-            startDateComponents.day = 1
+            startDateComponents.year = 2024
+            startDateComponents.month = 11
+            startDateComponents.day = 6
             startDateComponents.timeZone = timeZone
-
             // Create the start date
             let startDate = calendar.date(from: startDateComponents)!
+            
+            // Set up date components for the end
+            var endDateComponents = DateComponents()
+            endDateComponents.year = 2024
+            endDateComponents.month = 11
+            endDateComponents.day = 8
+            endDateComponents.timeZone = timeZone
+            // Create the end date
+            let endDate = calendar.date(from: endDateComponents)!
+            
             try market?.marketDataSnapshot(
                 symbol: symbol,
                 type: type,
                 interval: interval,
-                userInfo: [MarketDataKey.bufferInfo.rawValue: -startDate.timeIntervalSinceNow]
+                startDate: startDate,
+                endDate: endDate,
+                userInfo: [:]
             )
             .receive(on: DispatchQueue.global())
             .sink(receiveCompletion: { completion in

@@ -94,6 +94,8 @@ public class MarketDataFileProvider: MarketData {
         symbol:  Symbol,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
@@ -114,6 +116,8 @@ public class MarketDataFileProvider: MarketData {
         contract product: any Contract,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
@@ -161,7 +165,7 @@ public class MarketDataFileProvider: MarketData {
         guard let snapshotsDirectory else {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
-        let fileURL = snapshotsDirectory.appendingPathComponent(name)
+        var fileURL = snapshotsDirectory.appendingPathComponent(name)
         let marketDataFile: MarketDataFile
         switch fileURL.pathExtension {
         case "txt":
@@ -169,7 +173,8 @@ public class MarketDataFileProvider: MarketData {
         case "csv":
             marketDataFile = CSVMarketDataFile(fileUrl: fileURL)
         default:
-            throw Error.wrongFileFormat("Unsuported file format: \(fileURL.pathExtension)")
+            fileURL.appendPathExtension("txt")
+            marketDataFile = KlineMarketDataFile(fileUrl: fileURL)
         }
         return marketDataFile
     }

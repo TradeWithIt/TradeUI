@@ -22,7 +22,7 @@ struct SnapshotView: View {
                     .onAppear(perform: loadData)
             }
         }
-        .frame(minWidth: 500, minHeight: 450)
+        .frame(minWidth: 1000, minHeight: 450)
         .padding(20)
         .overlay(alignment: .topTrailing) {
             Button("Dismiss") {

@@ -28,6 +28,8 @@ public protocol MarketData {
         symbol: Symbol,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date?,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never>
     /// Requests price history snapshot with continues real time updates for asset symbol
@@ -35,6 +37,8 @@ public protocol MarketData {
         contract product: any Contract,
         type: String,
         interval: TimeInterval,
+        startDate: Date,
+        endDate: Date?,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never>
     /// Cancel real time market data updates

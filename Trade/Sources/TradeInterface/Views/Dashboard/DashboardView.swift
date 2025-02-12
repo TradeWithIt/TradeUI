@@ -17,11 +17,12 @@ struct DashboardView: View {
                 suggestionView(label: suggestion.label, symbol: suggestion.localSymbol)
             }
             Divider()
-            suggestionView(label: "Micro E-Mini S&P 500 (1 min)", symbol: "MESM4", interval: 60)
-            suggestionView(label: "E-Mini S&P 500 (1 min)", symbol: "ESM4", interval: 60)
+            
+            suggestionView(label: "Micro E-Mini S&P 500 (1 min)", symbol: "MESM4", interval: 300)
+            suggestionView(label: "E-Mini S&P 500 (1 min)", symbol: "ESM4", interval: 300)
 
-            suggestionView(label: "Micro E-mini Russell 2000 (1 min)", symbol: "M2KM4", interval: 60)
-            suggestionView(label: "E-Mini Russell 2000 (1 min)", symbol: "RTYM4", interval: 60)
+            suggestionView(label: "Micro E-mini Russell 2000 (1 min)", symbol: "M2KM4", interval: 300)
+            suggestionView(label: "E-Mini Russell 2000 (1 min)", symbol: "RTYM4", interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
         .onChange(of: trades.watchers.isEmpty) {
@@ -41,7 +42,7 @@ struct DashboardView: View {
     func suggestionView(
         label: String,
         symbol: String,
-        interval: TimeInterval = 60
+        interval: TimeInterval = 300
     ) -> some View {
         SuggestionView(label: label, symbol: symbol) {
             marketData(symbol, interval: interval)
@@ -50,7 +51,7 @@ struct DashboardView: View {
     
     func suggestionView(
         contract: any Contract,
-        interval: TimeInterval = 60
+        interval: TimeInterval = 300
     ) -> some View {
         SuggestionView(label: contract.label, symbol: contract.localSymbol) {
             marketData(contract: contract, interval: interval)
@@ -66,7 +67,7 @@ struct DashboardView: View {
                         try viewModel.saveHistoryToFile(
                             symbol: "BTC",
                             type: "CRYPTO",
-                            interval: 60,
+                            interval: 300,
                             fileProvider: trades.fileProvider
                         )
                     } catch {
