@@ -10,7 +10,7 @@ extension Bar: Klines {}
 
 @Observable
 public class Watcher: Identifiable {
-    public private(set) var symbol: Symbol
+    public private(set) var contract: any Contract
     public private(set) var interval: TimeInterval
     public private(set) var strategy: Strategy
     
@@ -30,8 +30,12 @@ public class Watcher: Identifiable {
         return 200 * multiplier
     }
     
+    public var symbol: String {
+        contract.symbol
+    }
+    
     public var id: String {
-        "\(symbol):\(interval)"
+        "\(contract.label):\(interval)"
     }
     
     deinit {
@@ -40,14 +44,14 @@ public class Watcher: Identifiable {
     }
 
     public init(
-        symbol: Symbol,
+        contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type = SupriseBarStrategy.self,
         marketData: MarketData,
         fileProvider: CandleFileProvider,
         userInfo: [String : Any] = [:]
     ) throws {
-        self.symbol = symbol
+        self.contract = contract
         self.interval = interval
         self.userInfo = userInfo
         self.strategyType = strategyType
@@ -60,7 +64,7 @@ public class Watcher: Identifiable {
         var userInfo = self.userInfo
         userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount) * 2.0
         self.cancellable = try marketData.marketData(
-            symbol: symbol,
+            contract: contract,
             interval: interval,
             userInfo: userInfo
         )
@@ -102,12 +106,16 @@ public class Watcher: Identifiable {
     }
     
     // MARK: File Provider
+    public func saveCandles(fileProvider: CandleFileProvider) {
+        guard !strategy.candles.isEmpty else { return }
+        snapshotData(fileProvider: fileProvider, candles: strategy.candles)
+    }
     
     private func snapshotData(fileProvider: CandleFileProvider, candles: [any Klines]) {
         guard let bars = candles as? [Bar] else { return }
         do {
             try fileProvider.save(
-                symbol: symbol,
+                symbol: contract.symbol,
                 interval: interval,
                 bars: bars,
                 strategyName: String(describing: strategyType)

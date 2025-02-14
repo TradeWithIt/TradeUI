@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 import Brokerage
+import Runtime
 
 class ObservableString {
     // The subject that will manage the updates
@@ -79,7 +80,7 @@ extension DashboardView {
         }
         
         func saveHistoryToFile(
-            symbol: Symbol,
+            contract: any Contract,
             type: String,
             interval: TimeInterval,
             fileProvider: MarketDataFileProvider
@@ -106,7 +107,7 @@ extension DashboardView {
             let endDate = calendar.date(from: endDateComponents)!
             
             try market?.marketDataSnapshot(
-                symbol: symbol,
+                contract: contract,
                 type: type,
                 interval: interval,
                 startDate: startDate,

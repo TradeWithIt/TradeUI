@@ -5,5 +5,5 @@ public protocol MarketOrder {
     init()
     /// Connect Service
     func connect() throws
-    func makeOrder(symbol: Symbol, action: OrderAction, order: Order) throws
+    func makeOrder(contract product: any Contract, action: OrderAction, order: Order) throws
 }

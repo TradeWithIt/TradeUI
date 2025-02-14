@@ -4,11 +4,21 @@ import IBKit
 
 public class InteractiveBrokers: Market {
     private struct Asset: Hashable {
-        var symbol: String
+        var contract: any Contract
         var interval: TimeInterval
+        
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(contract)
+            hasher.combine(interval)
+        }
+
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            return lhs.contract.hashValue == rhs.contract.hashValue
+            && lhs.interval == rhs.interval
+        }
     }
     
-    private let client = IBClient.paper(id: 0, type: .gateway)
+    private let client = IBClient.live(id: 0, type: .gateway)
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: Set<String> = []
     private var unsubscribeMarketData: Set<Asset> = []
@@ -19,7 +29,6 @@ public class InteractiveBrokers: Market {
     
     required public init() {
         client.eventFeed.sink {[weak self] anyEvent in
-            print(anyEvent.self)
             switch anyEvent {
             case let event as IBManagedAccounts:
                 self?.identifiers.formUnion(event.identifiers)
@@ -38,6 +47,8 @@ public class InteractiveBrokers: Market {
         }
     }
     
+    // MARK: - Market Symbol Search
+    
     public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error> {
         try Product.fetchProducts(symbol: symbol, productType: [.stock])
             .map { products in
@@ -46,26 +57,10 @@ public class InteractiveBrokers: Market {
             .eraseToAnyPublisher()
     }
     
-    public func makeOrder(symbol: Symbol, action: OrderAction, order: Order) throws {
-    }
+    // MARK: Market Data
     
-    public func unsubscribeMarketData(symbol:  Symbol, interval: TimeInterval) {
-        unsubscribeMarketData.insert(Asset(symbol: symbol, interval: interval))
-    }
-    
-    public func marketData(
-        symbol:  Symbol,
-        interval: TimeInterval,
-        userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never> {
-        let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
-        let contract = IBContract.equity(symbol, currency: "USD")
-        unsubscribeMarketData.remove(Asset(symbol: symbol, interval: interval))
-        return try historicBarPublisher(
-            contract: contract,
-            barSize: IBBarSize(timeInterval: interval),
-            duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: .distantFuture)
-        )
+    public func unsubscribeMarketData(contract: any Contract, interval: TimeInterval) {
+        unsubscribeMarketData.insert(Asset(contract: contract, interval: interval))
     }
     
     public func marketData(
@@ -73,38 +68,20 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract.equity(
-            product.localSymbol,
+        let contract = IBContract(
+            symbol: product.symbol,
+            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
             currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
+            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
         )
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
-        unsubscribeMarketData.remove(Asset(symbol: product.localSymbol, interval: interval))
+        let barSize = IBBarSize(timeInterval: interval)
+        unsubscribeMarketData.remove(Asset(contract: product, interval: interval))
+            
         return try historicBarPublisher(
             contract: contract,
-            barSize: IBBarSize(timeInterval: interval),
+            barSize: barSize,
             duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: .distantFuture)
-        )
-    }
-    
-    public func marketDataSnapshot(
-        symbol: Symbol,
-        type: String,
-        interval: TimeInterval,
-        startDate: Date,
-        endDate: Date? = nil,
-        userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract(
-            symbol: symbol,
-            secType: IBSecuritiesType(rawValue: type) ?? .crypto,
-            currency: "USD",
-            exchange: .PAXOS
-        )
-        return try historicBarPublisher(
-            contract: contract,
-            barSize: IBBarSize(timeInterval: interval),
-            duration: DateInterval(start: startDate, end: endDate ?? Date())
         )
     }
     
@@ -117,7 +94,7 @@ public class InteractiveBrokers: Market {
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract(
-            symbol: product.localSymbol,
+            symbol: product.symbol,
             secType: IBSecuritiesType(rawValue: type) ?? .stock,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
@@ -135,6 +112,7 @@ public class InteractiveBrokers: Market {
         try? client.cancelHistoricalData(requestID)
     }
     
+    // publishes one time event
     private func historicBarPublisher(
         contract: IBContract,
         barSize size: IBBarSize,
@@ -148,13 +126,13 @@ public class InteractiveBrokers: Market {
             .compactMap { $0 as? IBIndexedEvent }
             .filter { $0.requestID == requestID }
             .compactMap {[weak self] response -> CandleData? in
-                let asset = Asset(symbol: symbol, interval: interval)
+                let asset = Asset(contract: contract, interval: interval)
                 if let data = self?.unsubscribeMarketData, data.contains(asset) {
                     self?.unsubscribeMarketData.remove(asset)
                     self?.unsubscribeMarketData(requestID)
                     return nil
                 }
-
+                
                 switch response {
                 case let event as IBPriceHistory:
                     return CandleData(
@@ -192,6 +170,45 @@ public class InteractiveBrokers: Market {
         return publisher
     }
     
+    // MARK: Market Order
+    
+    public func makeOrder(contract product: any Contract, action: OrderAction, order: Order) throws {
+        
+    }
+    
+    /// publishes live bid, ask, last snapshorts taken every 250ms of requested contract
+    /// - Parameters:
+    /// - contract: security description
+    /// - extendedSession: include data from extended trading hours
+    func quotePublisher(for contract: IBContract, extendedSession: Bool = true) throws -> AnyPublisher<AnyQuote, Swift.Error> {
+        let requestID = client.nextRequestID
+        let request = IBMarketDataRequest(requestID: requestID, contract: contract)
+        try client.send(request: request)
+        
+        return client.eventFeed
+            .setFailureType(to: Swift.Error.self)
+            .compactMap { $0 as? IBIndexedEvent }
+            .filter { $0.requestID == requestID }
+            .tryMap { response -> AnyQuote in
+                switch response {
+                case let event as IBTick:
+                    return QuoteEvent(date: event.date, contract: contract, type: event.type, value: event.value)
+                case let event as IBTickTimestamp:
+                    return QuoteTimestap(contract: contract,date: Date(timeIntervalSince1970: event.value))
+                case let event as IBTickExchange:
+                    return QuoteExchange(contract: contract, exchange: event.value)
+                case let event as IBCurrentMarketDataType:
+                    return QuoteDataType(contract: contract, type: event.type)
+                case let event as IBServerError:
+                    throw TradeError.requestError(event.message)
+                default:
+                    let message = "thsi should never happen but received anyway \(response)"
+                    throw TradeError.somethingWentWrong(message)
+                }
+            }
+            .eraseToAnyPublisher()
+    }
+    
     /// sends order to broker
     private func placeOrder(_ order: IBOrder) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
         let requestID = client.nextRequestID
@@ -226,6 +243,19 @@ extension IBOpenOrder: OrderEvent {}
 extension IBOrderStatus: OrderEvent {}
 extension IBOrderExecution: OrderEvent {}
 
+
+extension IBContract: @retroactive Hashable {}
+extension IBContract: @retroactive Equatable {}
+extension IBContract: Contract {
+    public var type: String {
+        self.securitiesType.rawValue
+    }
+    
+    public var exchangeId: String {
+        self.exchange?.rawValue ?? ""
+    }
+}
+
 extension Bar {
     init(bar update: IBPriceBar, interval: TimeInterval) {
         self.init(
@@ -236,5 +266,43 @@ extension Bar {
             priceLow: update.low,
             priceClose: update.close
         )
+    }
+}
+
+public protocol AnyQuote{
+    var contract: IBContract {get}
+}
+
+struct QuoteEvent: AnyQuote{
+    var contract: IBContract
+    var date: Date
+    var type: IBTickType
+    var value: Double
+    
+    public init(date: Date, contract: IBContract, type: IBTickType, value: Double) {
+        self.date = date
+        self.contract = contract
+        self.type = type
+        self.value = value
+    }
+}
+
+struct QuoteTimestap: AnyQuote{
+    var contract: IBContract
+    var date: Date
+}
+
+struct QuoteExchange: AnyQuote{
+    var contract: IBContract
+    var exchange: String
+}
+
+struct QuoteDataType: AnyQuote{
+    var contract: IBContract
+    var type: IBMarketDataType
+    
+    public init(contract: IBContract,type: IBMarketDataType) {
+        self.contract = contract
+        self.type = type
     }
 }

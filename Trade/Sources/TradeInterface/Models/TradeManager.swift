@@ -4,15 +4,6 @@ import Brokerage
 import NIOConcurrencyHelpers
 import Combine
 
-public struct Asset: Codable, Hashable {
-    var symbol: String
-    var interval: TimeInterval
-    
-    var id: String {
-        "\(symbol):\(interval)"
-    }
-}
-
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
     private var cancellable: AnyCancellable?
@@ -53,31 +44,18 @@ public struct Asset: Codable, Hashable {
     // MARK: - Market Data
     
     public func cancelMarketData(_ asset: Asset) {
-        market.unsubscribeMarketData(symbol: asset.symbol, interval: asset.interval)
+        market.unsubscribeMarketData(contract: asset.instrument, interval: asset.interval)
         lock.withLockVoid {
             watchers.removeValue(forKey: asset.id)
         }
     }
     
-    public func marketData(_ asset: Asset) throws {
-        try lock.withLockVoid {
-            guard watchers[asset.id] == nil else { return }
-            let watcher = try Watcher(
-                symbol: asset.symbol,
-                interval: asset.interval,
-                marketData: market, 
-                fileProvider: fileProvider
-            )
-            watchers[asset.id] = watcher
-        }
-    }
-    
     public func marketData(contract: any Contract, interval: TimeInterval) throws {
-        let assetId = "\(contract.localSymbol):\(interval)"
+        let assetId = "\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else { return }
             let watcher = try Watcher(
-                symbol: contract.localSymbol,
+                contract: contract,
                 interval: interval,
                 marketData: market,
                 fileProvider: fileProvider

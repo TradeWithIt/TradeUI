@@ -26,7 +26,7 @@ struct SnapshotPlaybackView: View {
         .overlay(alignment: .topTrailing) {
             Button("Dismiss") {
                 if let watcher {
-                    fileProvider.unsubscribeMarketData(symbol: watcher.symbol, interval: watcher.interval)
+                    fileProvider.unsubscribeMarketData(contract: watcher.contract, interval: watcher.interval)
                 }
                 presentationMode.wrappedValue.dismiss()
             }.padding()
@@ -37,7 +37,7 @@ struct SnapshotPlaybackView: View {
         guard let fileName, let information = fileName.decodeFileName() else { return }
         do {
             self.watcher = try Watcher.init(
-                symbol: information.symbol,
+                contract: Instrument(type: "", symbol: information.symbol, exchangeId: "", currency: ""),
                 interval: information.interval,
                 strategyType: SupriseBarStrategy.self,
                 marketData: fileProvider,

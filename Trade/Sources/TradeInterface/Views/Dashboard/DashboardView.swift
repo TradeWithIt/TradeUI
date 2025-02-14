@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftUIComponents
 import Brokerage
+import Runtime
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
@@ -13,16 +14,21 @@ struct DashboardView: View {
             detail: { detail }
         )
         .searchSuggestions {
-            ForEach(viewModel.suggestedSearches, id: \.id) { suggestion in
-                suggestionView(label: suggestion.label, symbol: suggestion.localSymbol)
+            ForEach(viewModel.suggestedSearches, id: \.hashValue) { suggestion in
+                suggestionView(
+                    contract: Instrument(
+                        type: suggestion.type,
+                        symbol: suggestion.symbol,
+                        exchangeId: suggestion.exchangeId,
+                        currency: suggestion.currency
+                    ),
+                    interval: 300
+                )
             }
             Divider()
-            
-            suggestionView(label: "Micro E-Mini S&P 500 (1 min)", symbol: "MESM4", interval: 300)
-            suggestionView(label: "E-Mini S&P 500 (1 min)", symbol: "ESM4", interval: 300)
-
-            suggestionView(label: "Micro E-mini Russell 2000 (1 min)", symbol: "M2KM4", interval: 300)
-            suggestionView(label: "E-Mini Russell 2000 (1 min)", symbol: "RTYM4", interval: 300)
+            suggestionView(contract: Instrument.APPL, interval: 300)
+            suggestionView(contract: Instrument.BTC, interval: 300)
+            suggestionView(contract: Instrument.ETH, interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
         .onChange(of: trades.watchers.isEmpty) {
@@ -40,20 +46,10 @@ struct DashboardView: View {
     }
     
     func suggestionView(
-        label: String,
-        symbol: String,
-        interval: TimeInterval = 300
-    ) -> some View {
-        SuggestionView(label: label, symbol: symbol) {
-            marketData(symbol, interval: interval)
-        }
-    }
-    
-    func suggestionView(
         contract: any Contract,
         interval: TimeInterval = 300
     ) -> some View {
-        SuggestionView(label: contract.label, symbol: contract.localSymbol) {
+        SuggestionView(label: contract.label, symbol: contract.symbol) {
             marketData(contract: contract, interval: interval)
         }
     }
@@ -65,7 +61,7 @@ struct DashboardView: View {
                 Button("Load data") {
                     do {
                         try viewModel.saveHistoryToFile(
-                            symbol: "BTC",
+                            contract: Instrument.BTC,
                             type: "CRYPTO",
                             interval: 300,
                             fileProvider: trades.fileProvider
@@ -88,7 +84,7 @@ struct DashboardView: View {
             try? await Task.sleep(for: .milliseconds(200))
             await MainActor.run {
                 watchedAssets.forEach {
-                    self.marketData($0.symbol, interval: $0.interval)
+                    self.marketData(contract: $0.instrument, interval: $0.interval)
                 }
             }
         }
@@ -122,15 +118,30 @@ struct DashboardView: View {
                         trades.selectedWatcher = watcher.id
                     }
                 Spacer(minLength: 0)
-                Button(action: {
-                    cancelMarketData(watcher.symbol, interval: watcher.interval)
-                }, label: {
-                    Image(systemName: "xmark")
-                        .resizable()
-                })
-                .buttonStyle(PlainButtonStyle())
-                .frame(width: 12, height: 12)
+                activeAssetsButtons(watcher: watcher)
             }
+        }
+    }
+    
+    func activeAssetsButtons(watcher: Watcher) -> some View {
+        HStack {
+            Button(action: {
+                watcher.saveCandles(fileProvider: trades.fileProvider)
+            }, label: {
+                Image(systemName: "arrow.down.circle")
+                    .resizable()
+            })
+            .buttonStyle(PlainButtonStyle())
+            .frame(width: 12, height: 12)
+            
+            Button(action: {
+                cancelMarketData(watcher.contract, interval: watcher.interval)
+            }, label: {
+                Image(systemName: "xmark.circle")
+                    .resizable()
+            })
+            .buttonStyle(PlainButtonStyle())
+            .frame(width: 12, height: 12)
         }
     }
     
@@ -179,26 +190,31 @@ struct DashboardView: View {
         OrderView(watcher: trades.watcher)
     }
     
-    
-    private func cancelMarketData(_ symbol: String, interval: TimeInterval) {
-        let asset = Asset(symbol: symbol, interval: interval)
+    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) {
+        let asset = Asset(
+            instrument: Instrument(
+                type: contract.type,
+                symbol: contract.symbol,
+                exchangeId: contract.exchangeId,
+                currency: contract.currency
+            ),
+            interval: interval
+        )
         watchedAssets.remove(asset)
         trades.cancelMarketData(asset)
     }
     
-    private func marketData(_ symbol: String, interval: TimeInterval) {
-        do {
-            let asset = Asset(symbol: symbol, interval: interval)
-            watchedAssets.insert(asset)
-            try trades.marketData(asset)
-        } catch {
-            print("🔴 Failed to subscribe IB market data with error:", error)
-        }
-    }
-    
     private func marketData(contract: any Contract, interval: TimeInterval) {
         do {
-            let asset = Asset(symbol: contract.localSymbol, interval: interval)
+            let asset = Asset(
+                instrument: Instrument(
+                    type: contract.type,
+                    symbol: contract.symbol,
+                    exchangeId: contract.exchangeId,
+                    currency: contract.currency
+                ),
+                interval: interval
+            )
             watchedAssets.insert(asset)
             try trades.marketData(contract: contract, interval: interval)
         } catch {

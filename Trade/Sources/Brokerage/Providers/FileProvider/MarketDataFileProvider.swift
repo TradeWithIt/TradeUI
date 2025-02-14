@@ -60,56 +60,11 @@ public class MarketDataFileProvider: MarketData {
         return marketDataFile.loadCandleData()
     }
     
-    public func unsubscribeMarketData(symbol: Symbol, interval: TimeInterval) {
+    public func unsubscribeMarketData(contract: any Contract, interval: TimeInterval) {
         activeSubscriptions.removeAll(where: {
             let path = $0.fileUrl.lastPathComponent
-            return path.contains("\(symbol)-\(interval)")
+            return path.contains("\(contract.symbol)-\(interval)")
         })
-    }
-    
-    public func marketData(symbol: Symbol, interval: TimeInterval, userInfo: [String: Any]) throws -> AnyPublisher<CandleData, Never> {
-        guard let snapshotsDirectory else {
-            throw Error.missingDirectory("Failed to initiate directory.")
-        }
-        
-        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
-        let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName)
-        
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            throw Error.missingFile("File \(fileName) not found.")
-        }
-        
-        let marketDataFile = try marketDataFile(fileName)
-        activeSubscriptions.append(marketDataFile)
-        return try marketDataFile.readBars(
-            symbol: symbol,
-            interval: interval,
-            speedFactor: playbackSpeed,
-            loadAllAtOnce: false
-        )
-    }
-    
-    public func marketDataSnapshot(
-        symbol:  Symbol,
-        type: String,
-        interval: TimeInterval,
-        startDate: Date,
-        endDate: Date? = nil,
-        userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never> {
-        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
-        let mockCandleData = try loadFileData(
-            forSymbol: symbol,
-            interval: interval,
-            fileName: fileName
-        )
-        return Just(mockCandleData ?? CandleData(
-            symbol: symbol,
-            interval: interval,
-            bars: []
-        ))
-            .eraseToAnyPublisher()
     }
     
     public func marketDataSnapshot(
