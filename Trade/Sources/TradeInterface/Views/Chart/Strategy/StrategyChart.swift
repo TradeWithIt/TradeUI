@@ -1,9 +1,25 @@
 import SwiftUI
 import TradingStrategy
 
-public struct StrategyChart: View {
+public extension StrategyChart where Q == EmptyView {
+    init(strategy: any Strategy, interval: TimeInterval) {
+        self.strategy = strategy
+        self.interval = interval
+        self.quoteView = EmptyView()
+    }
+}
+
+public struct StrategyChart<Q: View>: View {
     let strategy: any Strategy
     let interval: TimeInterval
+    
+    let quoteView: Q
+    
+    public init(strategy: any Strategy, interval: TimeInterval, @ViewBuilder quoteView: @escaping () -> Q) {
+        self.strategy = strategy
+        self.interval = interval
+        self.quoteView = quoteView()
+    }
     
     public var body: some View {
         VStack {
@@ -21,6 +37,7 @@ public struct StrategyChart: View {
                 checkItem(name: key) { strategy.patterInformatioin[key] ?? false }
             }
             Spacer()
+            quoteView
         }
         .padding(.horizontal)
     }

@@ -62,7 +62,6 @@ struct DashboardView: View {
                     do {
                         try viewModel.saveHistoryToFile(
                             contract: Instrument.BTC,
-                            type: "CRYPTO",
                             interval: 300,
                             fileProvider: trades.fileProvider
                         )

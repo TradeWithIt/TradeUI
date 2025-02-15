@@ -11,13 +11,14 @@ extension Bar: Klines {}
 @Observable
 public class Watcher: Identifiable {
     public private(set) var contract: any Contract
+    public private(set) var quote: Quote?
     public private(set) var interval: TimeInterval
     public private(set) var strategy: Strategy
     
     private let userInfo: [String: Any]
     private let strategyType: Strategy.Type
     private let queue = DispatchQueue.global(qos: .userInitiated)
-    private var cancellable: AnyCancellable?
+    private var cancellables: Set<AnyCancellable> = []
     private var counter: Int = 0
     private var candles: OrderedSet<Bar> {
         OrderedSet((strategy.candles as? [Bar]) ?? [])
@@ -39,8 +40,10 @@ public class Watcher: Identifiable {
     }
     
     deinit {
-        cancellable?.cancel()
-        cancellable = nil
+        cancellables.forEach { cancellable in
+            cancellable.cancel()
+        }
+        cancellables.removeAll()
     }
 
     public init(
@@ -57,13 +60,23 @@ public class Watcher: Identifiable {
         self.strategyType = strategyType
         self.strategy = strategyType.init(candles: [])
         
+        try self.setUpMarketQuoteData(marketData, fileProvider: fileProvider)
         try self.setUpMarketData(marketData, fileProvider: fileProvider)
+    }
+    
+    private func setUpMarketQuoteData(_ market: MarketData, fileProvider: CandleFileProvider) throws {
+        try market.quotePublisher(contract: contract)
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] quote in
+            self?.quote = quote
+        }
+        .store(in: &cancellables)
     }
     
     private func setUpMarketData(_ marketData: MarketData, fileProvider: CandleFileProvider) throws {
         var userInfo = self.userInfo
         userInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount) * 2.0
-        self.cancellable = try marketData.marketData(
+        try marketData.marketData(
             contract: contract,
             interval: interval,
             userInfo: userInfo
@@ -103,6 +116,7 @@ public class Watcher: Identifiable {
         .sink { [weak self] strategy in
             self?.strategy = strategy
         }
+        .store(in: &cancellables)
     }
     
     // MARK: File Provider

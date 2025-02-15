@@ -22,6 +22,7 @@ public class InteractiveBrokers: Market {
     private var subscriptions: [AnyCancellable] = []
     private var identifiers: Set<String> = []
     private var unsubscribeMarketData: Set<Asset> = []
+    private var unsubscribeQuote: Set<IBContract> = []
     
     deinit {
         client.disconnect()
@@ -87,7 +88,6 @@ public class InteractiveBrokers: Market {
     
     public func marketDataSnapshot(
         contract product: any Contract,
-        type: String,
         interval: TimeInterval,
         startDate: Date,
         endDate: Date? = nil,
@@ -95,7 +95,7 @@ public class InteractiveBrokers: Market {
     ) throws -> AnyPublisher<CandleData, Never> {
         let contract = IBContract(
             symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: type) ?? .stock,
+            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
             currency: product.currency,
             exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
         )
@@ -129,6 +129,7 @@ public class InteractiveBrokers: Market {
                 let asset = Asset(contract: contract, interval: interval)
                 if let data = self?.unsubscribeMarketData, data.contains(asset) {
                     self?.unsubscribeMarketData.remove(asset)
+                    self?.unsubscribeQuote.insert(contract)
                     self?.unsubscribeMarketData(requestID)
                     return nil
                 }
@@ -176,37 +177,46 @@ public class InteractiveBrokers: Market {
         
     }
     
+    private func unsubscribeQuote(_ requestID: Int) {
+        try? client.unsubscribeMarketData(requestID)
+    }
+    
     /// publishes live bid, ask, last snapshorts taken every 250ms of requested contract
     /// - Parameters:
     /// - contract: security description
     /// - extendedSession: include data from extended trading hours
-    func quotePublisher(for contract: IBContract, extendedSession: Bool = true) throws -> AnyPublisher<AnyQuote, Swift.Error> {
+    public func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never> {
         let requestID = client.nextRequestID
-        let request = IBMarketDataRequest(requestID: requestID, contract: contract)
-        try client.send(request: request)
-        
-        return client.eventFeed
-            .setFailureType(to: Swift.Error.self)
+        let contract = IBContract(
+            symbol: product.symbol,
+            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
+            currency: product.currency,
+            exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
+        )
+        let publisher =  client.eventFeed
             .compactMap { $0 as? IBIndexedEvent }
             .filter { $0.requestID == requestID }
-            .tryMap { response -> AnyQuote in
+            .compactMap {[weak self] response -> Quote? in
+                if let self, self.unsubscribeQuote.contains(contract) {
+                    self.unsubscribeQuote(requestID)
+                    self.unsubscribeQuote.remove(contract)
+                }
+                
                 switch response {
                 case let event as IBTick:
-                    return QuoteEvent(date: event.date, contract: contract, type: event.type, value: event.value)
-                case let event as IBTickTimestamp:
-                    return QuoteTimestap(contract: contract,date: Date(timeIntervalSince1970: event.value))
-                case let event as IBTickExchange:
-                    return QuoteExchange(contract: contract, exchange: event.value)
-                case let event as IBCurrentMarketDataType:
-                    return QuoteDataType(contract: contract, type: event.type)
+                    return Quote(tick: event, contract: contract)
                 case let event as IBServerError:
-                    throw TradeError.requestError(event.message)
+                    print("Error: \(event.message)")
+                    return nil
                 default:
-                    let message = "thsi should never happen but received anyway \(response)"
-                    throw TradeError.somethingWentWrong(message)
+                    return nil
                 }
             }
             .eraseToAnyPublisher()
+        
+        let request = IBMarketDataRequest(requestID: requestID, contract: contract)
+        try client.send(request: request)
+        return publisher
     }
     
     /// sends order to broker
@@ -236,13 +246,12 @@ public class InteractiveBrokers: Market {
     }
 }
 
-public protocol OrderEvent{}
 
+public protocol OrderEvent{}
 extension IBOrder: OrderEvent {}
 extension IBOpenOrder: OrderEvent {}
 extension IBOrderStatus: OrderEvent {}
 extension IBOrderExecution: OrderEvent {}
-
 
 extension IBContract: @retroactive Hashable {}
 extension IBContract: @retroactive Equatable {}
@@ -269,40 +278,21 @@ extension Bar {
     }
 }
 
-public protocol AnyQuote{
-    var contract: IBContract {get}
-}
-
-struct QuoteEvent: AnyQuote{
-    var contract: IBContract
-    var date: Date
-    var type: IBTickType
-    var value: Double
-    
-    public init(date: Date, contract: IBContract, type: IBTickType, value: Double) {
-        self.date = date
-        self.contract = contract
-        self.type = type
-        self.value = value
-    }
-}
-
-struct QuoteTimestap: AnyQuote{
-    var contract: IBContract
-    var date: Date
-}
-
-struct QuoteExchange: AnyQuote{
-    var contract: IBContract
-    var exchange: String
-}
-
-struct QuoteDataType: AnyQuote{
-    var contract: IBContract
-    var type: IBMarketDataType
-    
-    public init(contract: IBContract,type: IBMarketDataType) {
-        self.contract = contract
-        self.type = type
+extension Quote {
+    init?(tick: IBTick, contract: IBContract) {
+        let context: Quote.Context
+        switch tick.type {
+        case .BidPrice: context = .bidPrice
+        case .AskPrice: context = .askPrice
+        case .LastPrice: context = .lastPrice
+        case .Volume: context = .volume
+        default: return nil
+        }
+        self.init(
+            contract: contract,
+            date: tick.date,
+            type: context,
+            value: context == .volume ? tick.value * 100 : tick.value
+        )
     }
 }

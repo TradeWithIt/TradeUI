@@ -67,9 +67,12 @@ public class MarketDataFileProvider: MarketData {
         })
     }
     
+    public func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never> {
+        Empty().eraseToAnyPublisher()
+    }
+    
     public func marketDataSnapshot(
         contract product: any Contract,
-        type: String,
         interval: TimeInterval,
         startDate: Date,
         endDate: Date? = nil,

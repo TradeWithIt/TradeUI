@@ -81,7 +81,6 @@ extension DashboardView {
         
         func saveHistoryToFile(
             contract: any Contract,
-            type: String,
             interval: TimeInterval,
             fileProvider: MarketDataFileProvider
         ) throws {
@@ -108,7 +107,6 @@ extension DashboardView {
             
             try market?.marketDataSnapshot(
                 contract: contract,
-                type: type,
                 interval: interval,
                 startDate: startDate,
                 endDate: endDate,

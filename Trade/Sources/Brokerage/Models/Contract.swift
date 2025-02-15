@@ -9,7 +9,7 @@ public protocol Contract: Hashable {
 
 extension Contract {
     public var label: String {
-        "\(type) \(symbol) \(currency) \(exchangeId)"
+        "\(symbol) \(currency) \(exchangeId) \(type)"
     }
     
     public func hash(into hasher: inout Hasher) {
