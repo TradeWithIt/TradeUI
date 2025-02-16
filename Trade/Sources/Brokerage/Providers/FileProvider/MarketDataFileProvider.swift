@@ -43,20 +43,20 @@ public class MarketDataFileProvider: MarketData {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MMM-yyyy_HH-mm-ss"
         let fileName = "\(symbol)-\(interval)_\(dateFormatter.string(from: Date()))"
-        let marketDataFile = try marketDataFile(fileName)
+        let marketDataFile = try marketDataFile(marketDataFileURL(fileName))
         marketDataFile.save(
             strategyName: strategy,
             candleData: CandleData(symbol: symbol, interval: interval, bars: bars)
         )
     }
     
-    public func loadFile(name: String) throws -> CandleData? {
-        let marketDataFile = try marketDataFile(name)
+    public func loadFile(url: URL) throws -> CandleData? {
+        let marketDataFile = try marketDataFile(url)
         return marketDataFile.loadCandleData()
     }
     
-    public func loadFileData(forSymbol symbol: Symbol, interval: TimeInterval, fileName: String) throws -> CandleData? {
-        let marketDataFile = try marketDataFile(fileName)
+    public func loadFileData(url: URL, symbol: Symbol, interval: TimeInterval) throws -> CandleData? {
+        let marketDataFile = try marketDataFile(url)
         return marketDataFile.loadCandleData()
     }
     
@@ -78,12 +78,10 @@ public class MarketDataFileProvider: MarketData {
         endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
-        let mockCandleData = try loadFileData(
-            forSymbol: product.symbol,
-            interval: interval,
-            fileName: fileName
-        )
+        guard let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL else {
+            throw Error.missingFile("File URL missing in user info")
+        }
+        let mockCandleData = try loadFileData(url: url, symbol: product.symbol, interval: interval)
         return Just(mockCandleData ?? CandleData(
             symbol: product.symbol,
             interval: interval,
@@ -97,19 +95,16 @@ public class MarketDataFileProvider: MarketData {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        guard let snapshotsDirectory else {
-            throw Error.missingDirectory("Failed to initiate directory.")
+        guard let fileURL = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL else {
+            throw Error.missingFile("File URL missing in user info")
         }
-        
-        let fileName = userInfo[MarketDataKey.snapshotFileName.rawValue] as? String ?? ""
         let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
-        let fileURL = snapshotsDirectory.appendingPathComponent(fileName)
         
-        guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            throw Error.missingFile("File \(fileName) not found.")
+        guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
+            throw Error.missingFile("File \(fileURL.lastPathComponent) not found.")
         }
         
-        let marketDataFile = try marketDataFile(fileName)
+        let marketDataFile = try marketDataFile(fileURL)
         activeSubscriptions.append(marketDataFile)
         return try marketDataFile.readBars(
             symbol: product.symbol,
@@ -119,21 +114,32 @@ public class MarketDataFileProvider: MarketData {
         )
     }
     
-    private func marketDataFile(_ name: String) throws -> MarketDataFile {
+    private func marketDataFile(_ url: URL) throws -> MarketDataFile {
+        var url = url
+        let marketDataFile: MarketDataFile
+        switch url.pathExtension {
+        case "txt":
+            marketDataFile = KlineMarketDataFile(fileUrl: url)
+        case "csv":
+            marketDataFile = CSVMarketDataFile(fileUrl: url)
+        default:
+            url.appendPathExtension("txt")
+            marketDataFile = KlineMarketDataFile(fileUrl: url)
+        }
+        return marketDataFile
+    }
+    
+    private func marketDataFileURL(_ name: String) throws -> URL {
         guard let snapshotsDirectory else {
             throw Error.missingDirectory("Failed to initiate directory.")
         }
         var fileURL = snapshotsDirectory.appendingPathComponent(name)
-        let marketDataFile: MarketDataFile
         switch fileURL.pathExtension {
-        case "txt":
-            marketDataFile = KlineMarketDataFile(fileUrl: fileURL)
-        case "csv":
-            marketDataFile = CSVMarketDataFile(fileUrl: fileURL)
+        case "txt": break
+        case "csv": break
         default:
             fileURL.appendPathExtension("txt")
-            marketDataFile = KlineMarketDataFile(fileUrl: fileURL)
         }
-        return marketDataFile
+        return fileURL
     }
 }

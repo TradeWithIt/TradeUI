@@ -56,14 +56,16 @@ struct DashboardView: View {
     }
     
     var sidebar: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading) {
-                Divider()
+        VStack {
+            TabView(selection: $viewModel.selectedTab) {
                 activeAssets
-                Divider()
+                    .tag(ViewModel.SidebarTab.watchers)
+                    .tabItem { Label("Watchers", systemImage: "chart.bar.fill") }
+                
                 FileSnapshotsView()
+                    .tag(ViewModel.SidebarTab.localFiles)
+                    .tabItem { Label("Local Files", systemImage: "folder.fill") }
             }
-            .padding(.horizontal)
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .task {
@@ -77,7 +79,7 @@ struct DashboardView: View {
     }
     
     var activeAssets: some View {
-        ForEach(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
+        List(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
             HStack {
                 Text(watcher.displayName)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -28,9 +28,22 @@ class ObservableString {
 
 extension DashboardView {
     @Observable class ViewModel {
+        enum SidebarTab: String, CaseIterable {
+            case watchers = "Watchers"
+            case localFiles = "Local Files"
+
+            var icon: String {
+                switch self {
+                case .watchers: return "eye"
+                case .localFiles: return "folder"
+                }
+            }
+        }
+        
         private var cancellables = Set<AnyCancellable>()
         var symbol = ObservableString(initialValue: "")
         var suggestedSearches: [any Contract] = []
+        var selectedTab: SidebarTab = .watchers
         
         private var market: Market?
         

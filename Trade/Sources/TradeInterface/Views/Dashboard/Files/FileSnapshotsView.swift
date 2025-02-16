@@ -9,12 +9,13 @@ public struct FileSnapshotsView: View {
     
     @Environment(TradeManager.self) private var trades
     @State private var viewModel = ViewModel()
-    
+    @State private var selectedFile: FileNode?
+
     public var body: some View {
-        snapshotsView
+        fileBrowserView
             .task {
                 Task {
-                    viewModel.loadSnapshotFileNames(url: trades.fileProvider.snapshotsDirectory)
+                    viewModel.loadFileTree(url: trades.fileProvider.snapshotsDirectory)
                 }
             }
             .sheet(isPresented: Binding<Bool>(
@@ -27,67 +28,54 @@ public struct FileSnapshotsView: View {
             )) {
                 switch viewModel.isPresentingSheet {
                 case .snapshotPreview:
-                    SnapshotView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
+                    SnapshotView(node: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
                 case .snapshotPlayback:
-                    SnapshotPlaybackView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
+                    SnapshotPlaybackView(node: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
                 default:
                     EmptyView()
                 }
             }
     }
-    
-    private var snapshotsView: some View {
-        VStack(alignment: .leading) {
-            Divider()
-            Button("Load data") {
-                do {
-                    try viewModel.saveHistoryToFile(
-                        contract: Instrument.BTC,
-                        interval: 300,
-                        market: trades.market,
-                        fileProvider: trades.fileProvider
-                    )
-                } catch {
-                    print("Failed saving hisotry to file", error)
+
+    private var fileBrowserView: some View {
+        List(viewModel.fileTree, children: \.children) { file in
+            fileItemView(for: file)
+                .listRowSeparator(.hidden)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private func fileItemView(for file: FileNode) -> some View {
+        HStack {
+            Image(systemName: file.isDirectory ? "folder.fill" : "doc.fill")
+                .foregroundColor(file.isDirectory ? .yellow : .gray)
+            Text(file.name)
+            Spacer()
+        }
+        .contextMenu {
+            if !file.isDirectory {
+                Button(action: {
+                    handleOpenFile(type: .snapshotPreview(node: file))
+                }) {
+                    Label("Preview", systemImage: "eye.fill")
                 }
-            }
-            .buttonStyle(PlainButtonStyle())
-            .frame(maxWidth: .infinity)
-            
-            ForEach(viewModel.snapshotFileNames, id: \.self) { fileName in
-                VStack {
-                    Text(fileName)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    HStack {
-                        Button(action: {
-                            handleOpenView(type: .snapshotPreview(fileName: fileName))
-                        }) {
-                            Image(systemName: "eye.fill")
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .frame(maxWidth: .infinity)
-                        
-                        Button(action: {
-                            handleOpenView(type: .snapshotPlayback(fileName: fileName))
-                        }) {
-                            Image(systemName: "play.fill")
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .frame(maxWidth: .infinity)
-                    }.padding(.top, 4)
+                Button(action: {
+                    handleOpenFile(type: .snapshotPlayback(node: file))
+                }) {
+                    Label("Play", systemImage: "play.fill")
                 }
             }
         }
     }
     
-    private func handleOpenView(type: ViewModel.PresentedSheetType) {
+    private func handleOpenFile(type: ViewModel.PresentedSheetType) {
         #if os(macOS)
         switch type {
-        case .snapshotPreview(let fileName):
-            openWindow(value: ViewModel.SnapshotPreview(fileName: fileName))
-        case .snapshotPlayback(let fileName):
-            openWindow(value: ViewModel.SnapshotPlayback(fileName: fileName))
+        case .snapshotPreview(let node):
+            openWindow(value: ViewModel.SnapshotPreview(file: node))
+        case .snapshotPlayback(let node):
+            openWindow(value: ViewModel.SnapshotPlayback(file: node))
         }
         #else
         viewModel.isPresentingSheet = type

@@ -5,52 +5,82 @@ import Brokerage
 import Runtime
 
 extension FileSnapshotsView {
+    public struct FileNode: Identifiable, Hashable, Codable {
+        public var id = UUID()
+        public let name: String
+        public let url: URL
+        public let isDirectory: Bool
+        var children: [FileNode]?
+    }
+    
     @Observable public class ViewModel {
         public struct SnapshotPreview: Hashable, Codable {
-            public let fileName: String
+            public let file: FileNode
         }
         public struct SnapshotPlayback: Hashable, Codable {
-            public let fileName: String
+            public let file: FileNode
         }
         public enum PresentedSheetType {
-            case snapshotPreview(fileName: String)
-            case snapshotPlayback(fileName: String)
+            case snapshotPreview(node: FileNode)
+            case snapshotPlayback(node: FileNode)
             
-            public var fileName: String {
+            public var node: FileNode {
                 switch self {
-                case let .snapshotPreview(fileName): fileName
-                case let .snapshotPlayback(fileName): fileName
+                case let .snapshotPreview(node): node
+                case let .snapshotPlayback(node): node
                 }
             }
         }
         
         private var cancellables = Set<AnyCancellable>()
-        var snapshotFileNames: [String] = []
+        var fileTree: [FileNode] = []
         var isPresentingSheet: PresentedSheetType? = nil
-        var selectedSnapshot: String? {
+        var selectedSnapshot: FileNode? {
             switch isPresentingSheet {
-            case .snapshotPreview(let fileName): fileName
-            case .snapshotPlayback(let fileName): fileName
+            case .snapshotPreview(let node): node
+            case .snapshotPlayback(let node): node
             case nil: nil
             }
+        }
+        
+        /// 📂 Loads file structure into a hierarchical format
+        func loadFileTree(url: URL?) {
+            guard let url else { return }
+            Task {
+                let root = self.buildFileTree(at: url)
+                await MainActor.run {
+                    self.fileTree = [root]
+                }
+            }
+        }
+        
+        private func buildFileTree(at url: URL) -> FileNode {
+            let fileManager = FileManager.default
+            var children: [FileNode] = []
+            
+            if let contents = try? fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey]) {
+                for content in contents {
+                    let resourceValues = try? content.resourceValues(forKeys: [.isDirectoryKey])
+                    let isDirectory = resourceValues?.isDirectory ?? false
+                    let fileName = content.lastPathComponent
+                    guard !fileName.hasPrefix(".") else { continue }
+                    
+                    if isDirectory {
+                        let subTree = buildFileTree(at: content)
+                        if let subChildren = subTree.children, !subChildren.isEmpty {
+                            children.append(subTree)
+                        }
+                    } else if fileName.hasSuffix(".txt") || fileName.hasSuffix(".csv") {
+                        children.append(FileNode(name: fileName, url: content, isDirectory: false, children: nil))
+                    }
+                }
+            }
+            return FileNode(name: url.lastPathComponent, url: url, isDirectory: true, children: children.isEmpty ? nil : children)
         }
         
         deinit {
             cancellables.forEach { $0.cancel() }
             cancellables.removeAll()
-        }
-        
-        func loadSnapshotFileNames(url: URL?, fileManager: FileManager = .default) {
-            guard let url = url else { return }
-            do {
-                let fileURLs = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-                snapshotFileNames = fileURLs.compactMap { url in
-                    print(url, url.pathExtension)
-                    return ["txt", "csv"].contains(url.pathExtension) ? url.lastPathComponent : nil
-                }
-            } catch {
-                print("Error loading files: \(error)")
-            }
         }
         
         func saveHistoryToFile(

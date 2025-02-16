@@ -10,11 +10,11 @@ public struct SnapshotView: View {
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
     
-    let fileName: String?
+    let node: FileSnapshotsView.FileNode?
     let fileProvider: CandleFileProvider
     
-    public init(fileName: String?, fileProvider: CandleFileProvider) {
-        self.fileName = fileName
+    public init(node: FileSnapshotsView.FileNode?, fileProvider: CandleFileProvider) {
+        self.node = node
         self.fileProvider = fileProvider
     }
     
@@ -42,13 +42,13 @@ public struct SnapshotView: View {
     }
     
     private func loadData() {
-        guard let fileName else { return }
+        guard let node else { return }
         do {
-            let candleData = try fileProvider.loadFile(name: fileName)
+            let candleData = try fileProvider.loadFile(url: node.url)
             strategy = SupriseBarStrategy(candles: candleData?.bars ?? [])
             interval = candleData?.interval
         } catch {
-            print("Failed to load data for:", fileName)
+            print("Failed to load data for:", node.url)
         }
     }
 }

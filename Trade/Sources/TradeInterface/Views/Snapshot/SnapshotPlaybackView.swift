@@ -8,11 +8,11 @@ public struct SnapshotPlaybackView: View {
     @Environment(\.presentationMode) var presentationMode
     @State var watcher: Watcher?
     
-    let fileName: String?
+    let node: FileSnapshotsView.FileNode?
     let fileProvider: MarketDataFileProvider
     
-    public init(fileName: String?, fileProvider: MarketDataFileProvider) {
-        self.fileName = fileName
+    public init(node: FileSnapshotsView.FileNode?, fileProvider: MarketDataFileProvider) {
+        self.node = node
         self.fileProvider = fileProvider
     }
     
@@ -39,7 +39,7 @@ public struct SnapshotPlaybackView: View {
     }
     
     private func runSimulation() {
-        guard let fileName, let information = fileName.decodeFileName() else { return }
+        guard let url = node?.url, let information = node?.name.decodeFileName() else { return }
         do {
             self.watcher = try Watcher.init(
                 contract: Instrument(type: "", symbol: information.symbol, exchangeId: "", currency: ""),
@@ -48,7 +48,7 @@ public struct SnapshotPlaybackView: View {
                 marketData: fileProvider,
                 fileProvider: fileProvider,
                 userInfo: [
-                    MarketDataKey.snapshotFileName.rawValue: fileName,
+                    MarketDataKey.snapshotFileURL.rawValue: url,
                     MarketDataKey.snapshotPlaybackSpeedInfo.rawValue: 300.0,
                 ]
             )

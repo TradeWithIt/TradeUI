@@ -53,7 +53,7 @@ public final class KlineMarketDataFile: MarketDataFile {
     public func save(strategyName: String, candleData: CandleData) {
         let fileManager = FileManager.default
         let encoder = JSONEncoder()
-        let filePath = fileUrl.path()
+        let filePath = fileUrl.path(percentEncoded: false)
         do {
             if !fileManager.fileExists(atPath: filePath) {
                 // Create intermediate directories
@@ -104,7 +104,7 @@ public final class KlineMarketDataFile: MarketDataFile {
     
     public func loadCandleData() -> CandleData? {
         do {
-            let content = try String(contentsOfFile: fileUrl.path(), encoding: .utf8)
+            let content = try String(contentsOfFile: fileUrl.path(percentEncoded: false), encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
             
             guard lines.count > 3,

@@ -41,14 +41,14 @@ struct TradeApp: App {
         }
         
         WindowGroup("Snapshot Preview", for: FileSnapshotsView.ViewModel.SnapshotPreview.self) { $snapshot in
-            if let fileName = snapshot?.fileName {
-                SnapshotView(fileName: fileName, fileProvider: trades.fileProvider)
+            if let node = snapshot?.file {
+                SnapshotView(node: node, fileProvider: trades.fileProvider)
             }
         }
         
         WindowGroup("Snapshot Playback", for: FileSnapshotsView.ViewModel.SnapshotPlayback.self) { $snapshot in
-            if let fileName = snapshot?.fileName {
-                SnapshotPlaybackView(fileName: fileName, fileProvider: trades.fileProvider)
+            if let node = snapshot?.file {
+                SnapshotPlaybackView(node: node, fileProvider: trades.fileProvider)
             }
         }
         

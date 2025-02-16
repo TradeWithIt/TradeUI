@@ -3,7 +3,7 @@ import Combine
 
 public enum MarketDataKey: String {
     case bufferInfo = "buffer"
-    case snapshotFileName = "snapshot.file.name"
+    case snapshotFileURL = "snapshot.file.url"
     case snapshotPlaybackSpeedInfo = "snapshot.playback.speed"
 }
 
