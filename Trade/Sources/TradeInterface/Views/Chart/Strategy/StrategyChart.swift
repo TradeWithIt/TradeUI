@@ -38,6 +38,7 @@ public struct StrategyChart<Q: View>: View {
             }
             Spacer()
             quoteView
+            Spacer()
         }
         .padding(.horizontal)
     }

@@ -18,11 +18,11 @@ struct WatcherView: View {
                 strategy: watcher.strategy,
                 interval: watcher.interval,
                 quoteView: {
-                    Text(volume).font(.headline)
                     HStack {
                         tickView(title: "LAST", value: lastPrice)
                         tickView(title: "BID", value: bidPrice)
                         tickView(title: "ASK", value: askPrice)
+                        tickView(title: "Volume", value: volume)
                     }
                 }
             )
