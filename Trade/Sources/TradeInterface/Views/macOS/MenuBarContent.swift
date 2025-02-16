@@ -6,6 +6,7 @@ extension String: @retroactive Identifiable {
 }
 
 public struct MenuBarContent: View {
+    @Environment(\.openWindow) private var openWindow
     @Environment(TradeManager.self) private var trades
     @AppStorage("activationPolicy") var activationPolicy: NSApplication.ActivationPolicy = .regular
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -23,13 +24,6 @@ public struct MenuBarContent: View {
             }
     }
     
-    var login: some View {
-        Button("Login") {
-            updateActivationPolicy(to: .regular)
-        }
-        .keyboardShortcut("1")
-    }
-    
     var accessory: some View {
         VStack {
             ForEach(Array(trades.watchers.keys)) { id in
@@ -39,14 +33,23 @@ public struct MenuBarContent: View {
                 }
             }
             Divider()
+            
+            Button("New Window") {
+                openWindow(id: "main")
+                updateActivationPolicy(to: .regular)
+            }
+            .keyboardShortcut("o")
+            
             Button(isRegularActivationPolicy ? "Hide" : "Show") {
                 if isRegularActivationPolicy {
                     updateActivationPolicy(to: .prohibited)
                 } else {
+                    openWindow(id: "main")
                     updateActivationPolicy(to: .regular)
                 }
             }
             .keyboardShortcut(isRegularActivationPolicy ? "h" : "s")
+            
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
