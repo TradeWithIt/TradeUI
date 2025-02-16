@@ -39,9 +39,6 @@ struct DashboardView: View {
             Task {
                 viewModel.updateMarketData(trades.market)
             }
-            Task {
-                viewModel.loadSnapshotFileNames(url: trades.fileProvider.snapshotsDirectory)
-            }
         }
     }
     
@@ -58,23 +55,9 @@ struct DashboardView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
                 Divider()
-                Button("Load data") {
-                    do {
-                        try viewModel.saveHistoryToFile(
-                            contract: Instrument.BTC,
-                            interval: 300,
-                            fileProvider: trades.fileProvider
-                        )
-                    } catch {
-                        print("Failed saving hisotry to file", error)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-                .frame(maxWidth: .infinity)
-                Divider()
                 activeAssets
                 Divider()
-                fileSnapshots
+                FileSnapshotsView()
             }
             .padding(.horizontal)
         }
@@ -85,23 +68,6 @@ struct DashboardView: View {
                 watchedAssets.forEach {
                     self.marketData(contract: $0.instrument, interval: $0.interval)
                 }
-            }
-        }
-        .sheet(isPresented: Binding<Bool>(
-            get: { viewModel.isPresentingSgeet != nil },
-            set: { isPresented in
-                if !isPresented {
-                    viewModel.isPresentingSgeet = nil
-                }
-            }
-        )) {
-            switch viewModel.isPresentingSgeet {
-            case .snapshotPreview:
-                SnapshotView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
-            case .snapshotPlayback:
-                SnapshotPlaybackView(fileName: viewModel.selectedSnapshot, fileProvider: trades.fileProvider)
-            default:
-                EmptyView()
             }
         }
     }
@@ -144,39 +110,10 @@ struct DashboardView: View {
         }
     }
     
-    var fileSnapshots: some View {
-        ForEach(viewModel.snapshotFileNames, id: \.self) { fileName in
-            VStack {
-                Text(fileName)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                HStack {
-                    Button(action: {
-                        viewModel.selectedSnapshot = fileName
-                        viewModel.isPresentingSgeet = .snapshotPreview
-                    }) {
-                        Image(systemName: "eye.fill")
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(maxWidth: .infinity)
-                    
-                    Button(action: {
-                        viewModel.selectedSnapshot = fileName
-                        viewModel.isPresentingSgeet = .snapshotPlayback
-                    }) {
-                        Image(systemName: "play.fill")
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(maxWidth: .infinity)
-                }.padding(.top, 4)
-            }
-        }
-    }
-    
     var detail: some View {
-        HStack {
+        VStack {
             charts
-//            controlPanel
+            controlPanel
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }

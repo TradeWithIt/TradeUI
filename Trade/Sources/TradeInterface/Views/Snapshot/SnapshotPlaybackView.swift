@@ -4,14 +4,19 @@ import Brokerage
 import TradingStrategy
 import TradeWithIt
 
-struct SnapshotPlaybackView: View {
+public struct SnapshotPlaybackView: View {
     @Environment(\.presentationMode) var presentationMode
     @State var watcher: Watcher?
     
     let fileName: String?
     let fileProvider: MarketDataFileProvider
     
-    var body: some View {
+    public init(fileName: String?, fileProvider: MarketDataFileProvider) {
+        self.fileName = fileName
+        self.fileProvider = fileProvider
+    }
+    
+    public var body: some View {
         Group {
             if let watcher {
                 WatcherView(watcher: watcher)

@@ -31,6 +31,19 @@ struct TradeApp: App {
                     trades.initializeSockets()
                 }
         }
+        
+        WindowGroup("Snapshot Preview", for: FileSnapshotsView.ViewModel.SnapshotPreview.self) { $snapshot in
+            if let fileName = snapshot?.fileName {
+                SnapshotView(fileName: fileName, fileProvider: trades.fileProvider)
+            }
+        }
+        
+        WindowGroup("Snapshot Playback", for: FileSnapshotsView.ViewModel.SnapshotPlayback.self) { $snapshot in
+            if let fileName = snapshot?.fileName {
+                SnapshotPlaybackView(fileName: fileName, fileProvider: trades.fileProvider)
+            }
+        }
+        
         #else
         WindowGroup {
             ContentView()

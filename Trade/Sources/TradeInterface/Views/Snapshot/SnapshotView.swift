@@ -4,7 +4,8 @@ import Brokerage
 import TradingStrategy
 import TradeWithIt
 
-struct SnapshotView: View {
+public struct SnapshotView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
@@ -12,7 +13,12 @@ struct SnapshotView: View {
     let fileName: String?
     let fileProvider: CandleFileProvider
     
-    var body: some View {
+    public init(fileName: String?, fileProvider: CandleFileProvider) {
+        self.fileName = fileName
+        self.fileProvider = fileProvider
+    }
+    
+    public var body: some View {
         Group {
             if let strategy {
                 StrategyChart(strategy: strategy, interval: interval ?? 60)
@@ -26,7 +32,11 @@ struct SnapshotView: View {
         .padding(20)
         .overlay(alignment: .topTrailing) {
             Button("Dismiss") {
-                presentationMode.wrappedValue.dismiss()
+                if Bundle.main.isMacOS {
+                    dismiss()
+                } else {
+                    presentationMode.wrappedValue.dismiss()
+                }
             }.padding()
         }
     }

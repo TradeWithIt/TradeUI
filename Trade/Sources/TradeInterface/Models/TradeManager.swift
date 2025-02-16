@@ -8,8 +8,8 @@ import Combine
     private let lock: NIOLock = NIOLock()
     private var cancellable: AnyCancellable?
     
-    let market: Market
-    let fileProvider: MarketDataFileProvider
+    public let market: Market
+    public let fileProvider: MarketDataFileProvider
     var watchers: [String: Watcher] = [:]
     var selectedWatcher: String?
     
