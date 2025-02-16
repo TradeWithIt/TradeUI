@@ -1,5 +1,6 @@
 import SwiftUI
 import TradeInterface
+import Runtime
 
 @main
 struct TradeApp: App {
@@ -30,6 +31,13 @@ struct TradeApp: App {
                 .onAppear {
                     trades.initializeSockets()
                 }
+        }
+        
+        WindowGroup("Watcher", for: Watcher.ID.self) { $watcherId in
+            if let watcherId = watcherId, let watcher = trades.watchers[watcherId] {
+                WatcherView(watcher: watcher)
+                    .navigationTitle("Watcher: \(watcher.displayName)")
+            }
         }
         
         WindowGroup("Snapshot Preview", for: FileSnapshotsView.ViewModel.SnapshotPreview.self) { $snapshot in

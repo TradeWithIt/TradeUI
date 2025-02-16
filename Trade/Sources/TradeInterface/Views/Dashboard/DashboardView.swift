@@ -6,6 +6,10 @@ import Runtime
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @Environment(TradeManager.self) private var trades
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+    
     @State private var viewModel = ViewModel()
     
     var body: some View {
@@ -75,7 +79,7 @@ struct DashboardView: View {
     var activeAssets: some View {
         ForEach(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
             HStack {
-                Text("\(watcher.symbol): \(viewModel.formatCandleTimeInterval(watcher.interval))")
+                Text(watcher.displayName)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .bold(trades.selectedWatcher == watcher.id)
                     .contentShape(Rectangle())
@@ -84,6 +88,11 @@ struct DashboardView: View {
                     }
                 Spacer(minLength: 0)
                 activeAssetsButtons(watcher: watcher)
+            }
+            .contextMenu {
+                Button("Open Note in New Window") {
+                    openWindow(value: watcher.id)
+                }
             }
         }
     }

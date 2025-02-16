@@ -3,16 +3,19 @@ import Runtime
 import Brokerage
 import TradingStrategy
 
-struct WatcherView: View {
+public struct WatcherView: View {
     @State var bidPrice: String = "-"
     @State var askPrice: String = "-"
     @State var lastPrice: String = "-"
-    
     @State var volume: String = "-"
     
     let watcher: Watcher?
     
-    var body: some View {
+    public init(watcher: Watcher?) {
+        self.watcher = watcher
+    }
+    
+    public var body: some View {
         if let watcher {
             StrategyChart(
                 strategy: watcher.strategy,

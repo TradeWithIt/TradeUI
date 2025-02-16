@@ -39,6 +39,10 @@ public class Watcher: Identifiable {
         "\(contract.label):\(interval)"
     }
     
+    public var displayName: String {
+        "\(symbol): \(interval.formatCandleTimeInterval())"
+    }
+    
     deinit {
         cancellables.forEach { cancellable in
             cancellable.cancel()
@@ -172,5 +176,27 @@ public class Watcher: Identifiable {
         guard let strategy, strategy.patternIdentified else { return strategy }
         // To do: Enter trade
         return strategy
+    }
+}
+
+public extension TimeInterval {
+    func formatCandleTimeInterval() -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .abbreviated
+
+        switch self {
+        case 60...3599:  // Seconds to less than an hour
+            formatter.allowedUnits = [.minute]
+        case 3600...86399:  // One hour to less than a day
+            formatter.allowedUnits = [.hour]
+        case 86400...604799:  // One day to less than a week
+            formatter.allowedUnits = [.day]
+        case 604800...:  // One week and more
+            formatter.allowedUnits = [.weekOfMonth]
+        default:
+            formatter.allowedUnits = [.second]  // For less than a minute
+        }
+
+        return formatter.string(from: self) ?? "N/A"
     }
 }

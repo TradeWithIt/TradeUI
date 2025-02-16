@@ -10,7 +10,7 @@ import Combine
     
     public let market: Market
     public let fileProvider: MarketDataFileProvider
-    var watchers: [String: Watcher] = [:]
+    public private(set) var watchers: [String: Watcher] = [:]
     var selectedWatcher: String?
     
     private var isLookingUpSuggestions: Bool = false

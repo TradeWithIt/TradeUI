@@ -58,26 +58,6 @@ extension DashboardView {
             self.market = market
         }
         
-        func formatCandleTimeInterval(_ interval: TimeInterval) -> String {
-            let formatter = DateComponentsFormatter()
-            formatter.unitsStyle = .abbreviated
-
-            switch interval {
-            case 60...3599:  // Seconds to less than an hour
-                formatter.allowedUnits = [.minute]
-            case 3600...86399:  // One hour to less than a day
-                formatter.allowedUnits = [.hour]
-            case 86400...604799:  // One day to less than a week
-                formatter.allowedUnits = [.day]
-            case 604800...:  // One week and more
-                formatter.allowedUnits = [.weekOfMonth]
-            default:
-                formatter.allowedUnits = [.second]  // For less than a minute
-            }
-
-            return formatter.string(from: interval) ?? "N/A"
-        }
-        
         private func loadProducts(market: MarketSearch, symbol: Symbol) throws {
             try market.search(nameOrSymbol: symbol)
                 .receive(on: DispatchQueue.main)
