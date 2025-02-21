@@ -13,7 +13,7 @@ public class Watcher: Identifiable {
     public private(set) var quote: Quote?
     public private(set) var interval: TimeInterval
     public private(set) var strategy: Strategy
-    public private(set) var activeTrade: Bar? = nil
+    public private(set) var activeTrade: Klines? = nil
 
     private let userInfo: [String: Any]
     private let strategyType: Strategy.Type
@@ -161,26 +161,19 @@ public class Watcher: Identifiable {
     private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) -> (any Strategy)? {
         guard let strategy, strategy.patternIdentified, let entryBar = strategy.candles.last else { return strategy }
                 
-//        let units = SurpriseBarDecision.evaluateEntry(portfolio: 1000000, strategy: strategy)
-//        guard units > 0 else { return strategy }
-//        
-//        let initialStopLoss = PositionManager().adjustStopLoss(entryBar: entryBar, strategy: strategy)
-//        self.activeTrade = entryBar
+        let units = strategy.evaluateEntry(portfolio: 1000000)
+        guard units > 0 else { return strategy }
+        
+        let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
+        self.activeTrade = entryBar
         
         return strategy
     }
     
     private func manageActiveTrade(strategy: (any Strategy)) {
         guard let activeTrade else { return }
-        
-//        if PositionManager.shouldExit(entryBar: marketData.candles.last!, strategy: strategy) {
-//            print("❌ Exiting trade at \(marketData.candles.last!.priceClose)")
-//            self.activeTrade = nil
-//            return
-//        }
-//        
-//        let updatedStopLoss = PositionManager.adjustStopLoss(entryBar: activeTrade.entryPrice, strategy: strategy)
-//        self.activeTrade?.stopLoss = updatedStopLoss
+        guard strategy.shouldExit(entryBar: activeTrade) else { return }
+        print("❌ Exiting trade at \(activeTrade.priceClose)")
     }
 }
 
