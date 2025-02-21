@@ -79,7 +79,7 @@ struct DashboardView: View {
     }
     
     var activeAssets: some View {
-        List(Array(trades.watchers.values.sorted(by: { $0.id < $1.id })), id: \.id) { watcher in
+        List(Array(trades.watchers.values), id: \.id) { watcher in
             HStack {
                 Text(watcher.displayName)
                     .frame(maxWidth: .infinity, alignment: .leading)
