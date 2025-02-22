@@ -116,6 +116,10 @@ public class Watcher: Identifiable {
         }
     }
     
+    private func enterTrade() {
+        
+    }
+    
     public func saveCandles(fileProvider: CandleFileProvider) {
         guard !strategy.candles.isEmpty else { return }
         snapshotData(fileProvider: fileProvider, candles: strategy.candles)
@@ -161,7 +165,7 @@ public class Watcher: Identifiable {
     private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) -> (any Strategy)? {
         guard let strategy, strategy.patternIdentified, let entryBar = strategy.candles.last else { return strategy }
                 
-        let units = strategy.evaluateEntry(portfolio: 1000000)
+        let units = strategy.evaluateEntry(equity: 1000000)
         guard units > 0 else { return strategy }
         
         let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)

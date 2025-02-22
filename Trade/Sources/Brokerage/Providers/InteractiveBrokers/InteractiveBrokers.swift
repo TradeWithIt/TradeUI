@@ -19,9 +19,18 @@ public class InteractiveBrokers: Market {
     }
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
-    private let client = IBClient.paper(id: 0, type: .gateway)
-    private var subscriptions: [AnyCancellable] = []
-    private var identifiers: Set<String> = []
+    let client = IBClient.paper(id: 0, type: .gateway)
+    var subscriptions: [AnyCancellable] = []
+    var identifiers: Set<String> = []
+    
+    /// Return next valid request identifier you should use to make request or subscription
+    private var _nextOrderId: Int = 0
+    public var nextOrderID: Int {
+        let value = _nextOrderId
+        _nextOrderId += 1
+        return value
+    }
+    
     private var unsubscribeMarketData: Set<Asset> = []
     private var unsubscribeQuote: Set<IBContract> = []
     
@@ -219,40 +228,7 @@ public class InteractiveBrokers: Market {
         try client.send(request: request)
         return publisher
     }
-    
-    /// sends order to broker
-    private func placeOrder(_ order: IBOrder) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        let requestID = client.nextRequestID
-        
-        let publisher =  client.eventFeed
-            .setFailureType(to: Swift.Error.self)
-            .compactMap { $0 as? IBIndexedEvent }
-            .filter { $0.requestID == requestID }
-            .tryMap { response -> OrderEvent in
-                switch response {
-                case let event as OrderEvent:
-                    return event
-                case let event as IBServerError:
-                    throw TradeError.requestError(event.message)
-                default:
-                    let message = "thsi should never happen but received anyway \(response)"
-                    throw TradeError.somethingWentWrong(message)
-                }
-            }
-            .eraseToAnyPublisher()
-        
-        try client.placeOrder(requestID, order: order)
-        
-        return publisher
-    }
 }
-
-
-public protocol OrderEvent{}
-extension IBOrder: OrderEvent {}
-extension IBOpenOrder: OrderEvent {}
-extension IBOrderStatus: OrderEvent {}
-extension IBOrderExecution: OrderEvent {}
 
 extension IBContract: @retroactive Hashable {}
 extension IBContract: @retroactive Equatable {}
