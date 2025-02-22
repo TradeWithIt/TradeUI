@@ -23,7 +23,7 @@ public class InteractiveBrokers: Market {
     var subscriptions: [AnyCancellable] = []
     var accounts: [String: Account] = [:]
     
-    var account: Account? {
+    public var account: Account? {
         accounts.first?.value
     }
     
@@ -131,10 +131,6 @@ public class InteractiveBrokers: Market {
         )
     }
     
-    public func cancelAllOrders() throws {
-        try client.cancelAllOrders()
-    }
-    
     // MARK: Private IB Type handling
     
     private func unsubscribeMarketData(_ requestID: Int) {
@@ -202,8 +198,20 @@ public class InteractiveBrokers: Market {
     
     // MARK: Market Order
     
+    public func cancelAllOrders() throws {
+        try client.cancelAllOrders()
+    }
+    
+    public func cancelOrder(orderId: Int) throws {
+        try client.cancelOrder(orderId)
+    }
+    
     public func getOrders() -> [Order] {
         return accounts.values.flatMap { $0.orders.values }
+    }
+    
+    public func getPositions() -> [Position] {
+        return accounts.values.flatMap { $0.positions }
     }
     
     public func makeLimitOrder(

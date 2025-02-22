@@ -107,8 +107,15 @@ extension IBOrder: Order {
     public var orderAction: OrderAction { self.action == .buy ? .buy : .sell }
     public var limitPrice: Double? { lmtPrice }
     public var stopPrice: Double? { auxPrice }
-    public var filledCount: Double { filledQuantity ?? 0 }
     public var totalCount: Double { totalQuantity }
     public var orderStatus: String { orderState.status.rawValue }
     public var timestamp: Date? { orderState.completedTime }
+    public var filledCount: Double {
+        set {
+            filledQuantity = newValue
+        }
+        get {
+            filledQuantity ?? 0
+        }
+    }
 }

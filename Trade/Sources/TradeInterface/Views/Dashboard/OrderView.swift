@@ -10,17 +10,12 @@ struct OrderView: View {
     @State private var whichList = 0
     let watcher: Watcher?
     
-    let customDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Foundation.Calendar(identifier: .iso8601)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "h:mm MM/dd/yy"
-        return formatter
-    }()
-    
     var orders: [Order] {
         trades.market.getOrders()
+    }
+    
+    var positions: [Position] {
+        trades.market.getPositions()
     }
     
     var body: some View {
@@ -81,23 +76,18 @@ struct OrderView: View {
     }
     
     var positionList: some View {
-        EmptyView()
-//        List() { position in
-//            HStack {
-////                Text(position)
-////                Text(position, formatter: customDateFormatter)
-//            }
-//            .frame(maxWidth: .infinity, alignment: .leading)
-//            .listRowSeparator(.hidden)
-//            .listSectionSeparator(.hidden)
-//            .listRowBackground(Color.clear)
-//        }
-//        .listStyle(.plain)
-//        .scrollContentBackground(.hidden)
-//        .frame(maxWidth: .infinity, maxHeight: .infinity)
-//        .refreshable {
-//            await refreshOrders()
-//        }
+        List(positions, id: \.label) { position in
+            HStack {
+                Text(position.symbol)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowSeparator(.hidden)
+            .listSectionSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     var order: some View {

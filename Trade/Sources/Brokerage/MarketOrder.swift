@@ -5,10 +5,14 @@ public protocol MarketOrder {
     init()
     /// Connect Service
     func connect() throws
+    var account: Account? { get }
     
     /// Retrieve All Active Orders
     func getOrders() -> [Order]
     func cancelAllOrders() throws
+    func cancelOrder(orderId: Int) throws
+    
+    func getPositions() -> [Position]
     
     /// Create Orders
     func makeLimitOrder(

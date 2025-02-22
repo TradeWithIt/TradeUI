@@ -60,7 +60,7 @@ public extension InteractiveBrokers {
     func updatePositions(_ position: IBPosition) {
         guard var account = accounts[position.accountName] else { return }
         
-        let symbol = position.contract.symbol
+        let contract = position.contract
         let quantity = position.position
         let avgCost = position.avgCost
         
@@ -72,7 +72,10 @@ public extension InteractiveBrokers {
         let unrealizedPNL = (marketPrice - avgCost) * quantity
         
         let newPosition = Position(
-            symbol: symbol,
+            type: position.contract.type,
+            symbol: position.contract.symbol,
+            exchangeId: position.contract.exchangeId,
+            currency: position.contract.currency,
             quantity: quantity,
             marketValue: marketValue,
             averageCost: avgCost,
@@ -81,7 +84,7 @@ public extension InteractiveBrokers {
         )
         
         // Update or Add Position
-        if let index = account.positions.firstIndex(where: { $0.symbol == symbol }) {
+        if let index = account.positions.firstIndex(where: { $0.label == contract.label }) {
             account.positions[index] = newPosition
         } else {
             account.positions.append(newPosition)
@@ -103,8 +106,8 @@ public extension InteractiveBrokers {
             self.accounts[accountId]?.orders[event.order.orderID] = event.order
             
         case let event as IBOrderExecution:
-            let filledQuantity = self.accounts[event.account]?.orders[event.orderID]?.filledQuantity ?? 0
-            self.accounts[event.account]?.orders[event.orderID]?.filledQuantity = filledQuantity + event.shares
+            let filledQuantity = self.accounts[event.account]?.orders[event.orderID]?.filledCount ?? 0
+            self.accounts[event.account]?.orders[event.orderID]?.filledCount = filledQuantity + event.shares
         
         case let event as IBOrderCompletion:
             guard let accountId = event.order.account else { return }
@@ -115,7 +118,7 @@ public extension InteractiveBrokers {
             case .cancelled:
                 guard
                     let account = self.account,
-                    let orderID = account.orders.values.first(where: { $0.permID == event.permID })?.orderID
+                    let orderID = account.orders.values.first(where: { ($0 as? IBOrder)?.permID == event.permID })?.orderID
                 else { return }
                 self.accounts[account.name]?.orders[orderID] = nil
             default:
@@ -125,61 +128,4 @@ public extension InteractiveBrokers {
             break
         }
     }
-}
-
-// MARK: - Account Data Model
-public struct Account {
-    public var availableFunds: Double
-    public var buyingPower: Double
-    public var currency: String?
-    public var excessLiquidity: Double
-    public var initialMargin: Double
-    public var maintenanceMargin: Double
-    public var leverage: Double
-    public var name: String
-    public var netLiquidation: Double
-    public var updatedAt: Date?
-
-    public var cashBook: [Balance]
-    public var orders: [Int: IBOrder]
-    public var positions: [Position]
-
-    public init(name: String) {
-        self.name = name
-        self.availableFunds = 0.0
-        self.buyingPower = 0.0
-        self.currency = nil
-        self.excessLiquidity = 0.0
-        self.initialMargin = 0.0
-        self.maintenanceMargin = 0.0
-        self.leverage = 0.0
-        self.netLiquidation = 0.0
-        self.updatedAt = nil
-        self.cashBook = []
-        self.orders = [:]
-        self.positions = []
-    }
-}
-
-// MARK: - Supporting Models
-public struct Balance {
-    public let currency: String
-    public let amount: Double
-}
-
-public struct OrderFill {
-    public let orderId: Int
-    public let symbol: String
-    public let price: Double
-    public let quantity: Double
-    public let timestamp: Date
-}
-
-public struct Position {
-    public let symbol: String
-    public let quantity: Double
-    public let marketValue: Double
-    public let averageCost: Double
-    public let realizedPNL: Double
-    public let unrealizedPNL: Double
 }

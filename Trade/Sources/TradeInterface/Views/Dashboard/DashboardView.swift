@@ -11,6 +11,8 @@ struct DashboardView: View {
     #endif
     
     @State private var viewModel = ViewModel()
+    @State private var account: Account?
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
         NavigationSplitView(
@@ -35,6 +37,9 @@ struct DashboardView: View {
             suggestionView(contract: Instrument.ETH, interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
+        .onReceive(timer) { _ in
+            account = trades.market.account
+        }
         .onChange(of: trades.watchers.isEmpty) {
             guard trades.selectedWatcher == nil else { return }
             trades.selectedWatcher = trades.watchers.first?.value.id
@@ -65,6 +70,9 @@ struct DashboardView: View {
                 FileSnapshotsView()
                     .tag(ViewModel.SidebarTab.localFiles)
                     .tabItem { Label("Local Files", systemImage: "folder.fill") }
+            }
+            if let account {
+                AccountSummaryView(account: account)
             }
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
