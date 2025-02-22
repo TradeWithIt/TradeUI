@@ -61,6 +61,13 @@ public class Watcher: Identifiable {
     private func setupMarketQuoteData(market: MarketData) async {
         do {
             for await quote in try market.quotePublisher(contract: contract).values {
+                guard
+                    quote.contract.symbol == contract.symbol,
+                    quote.contract.exchangeId == contract.exchangeId,
+                    quote.contract.currency == contract.currency,
+                    quote.contract.type == contract.type
+                else { continue }
+                
                 await MainActor.run { self.quote = quote }
             }
         } catch {

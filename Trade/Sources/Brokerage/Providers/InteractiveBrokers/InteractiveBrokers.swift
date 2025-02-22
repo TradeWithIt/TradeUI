@@ -21,7 +21,11 @@ public class InteractiveBrokers: Market {
 //    private let client = IBClient.live(id: 0, type: .gateway)
     let client = IBClient.paper(id: 0, type: .gateway)
     var subscriptions: [AnyCancellable] = []
-    var identifiers: Set<String> = []
+    var accounts: [String: Account] = [:]
+    
+    var account: Account? {
+        accounts.first?.value
+    }
     
     /// Return next valid request identifier you should use to make request or subscription
     private var _nextOrderId: Int = 0
@@ -40,9 +44,20 @@ public class InteractiveBrokers: Market {
     
     required public init() {
         client.eventFeed.sink {[weak self] anyEvent in
+            guard let self else { return }
             switch anyEvent {
             case let event as IBManagedAccounts:
-                self?.identifiers.formUnion(event.identifiers)
+                event.identifiers.forEach { accountId in
+                    self.startListening(accountId: accountId)
+                }
+            case let event as IBAccountSummary:
+                self.updateAccountData(event: event)
+            case let event as IBAccountUpdate:
+                self.updateAccountData(event: event)
+            case let event as IBPosition:
+                self.updatePositions(event)
+            case let event as OrderEvent:
+                self.updateAccountOrders(event: event)
             default:
                 break
             }
@@ -116,6 +131,10 @@ public class InteractiveBrokers: Market {
         )
     }
     
+    public func cancelAllOrders() throws {
+        try client.cancelAllOrders()
+    }
+    
     // MARK: Private IB Type handling
     
     private func unsubscribeMarketData(_ requestID: Int) {
@@ -183,8 +202,50 @@ public class InteractiveBrokers: Market {
     
     // MARK: Market Order
     
-    public func makeOrder(contract product: any Contract, action: OrderAction, order: Order) throws {
-        
+    public func getOrders() -> [Order] {
+        return accounts.values.flatMap { $0.orders.values }
+    }
+    
+    public func makeLimitOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        quantity: Double
+    ) throws {
+        let contract = IBContract(
+            symbol: product.symbol,
+            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
+            currency: product.currency,
+            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
+        )
+        try limitOrder(
+            contract: contract,
+            action: action == .buy ? .buy : .sell,
+            price: price,
+            quantity: quantity
+        )
+    }
+    
+    public func makeLimitWithTrailingStopOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        trailStopPrice: Double,
+        quantity: Double
+    ) throws {
+        let contract = IBContract(
+            symbol: product.symbol,
+            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
+            currency: product.currency,
+            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
+        )
+        try limitWithTrailingStopOrder(
+            contract: contract,
+            action: action == .buy ? .buy : .sell,
+            price: price,
+            trailStopPrice: trailStopPrice,
+            quantity: quantity
+        )
     }
     
     private func unsubscribeQuote(_ requestID: Int) {

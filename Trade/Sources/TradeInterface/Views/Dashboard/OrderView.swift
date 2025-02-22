@@ -1,12 +1,11 @@
 import SwiftUI
 import Foundation
 import Runtime
+import Brokerage
 
 struct OrderView: View {
     @Environment(TradeManager.self) private var trades
-    @State private var viewModel = ViewModel()
     @State private var contractNumber: Int32 = 1
-    @State private var takeProfit: Int = 25
     @State private var stopLoss: Int = 10
     @State private var whichList = 0
     let watcher: Watcher?
@@ -20,6 +19,10 @@ struct OrderView: View {
         return formatter
     }()
     
+    var orders: [Order] {
+        trades.market.getOrders()
+    }
+    
     var body: some View {
         VStack(alignment: .leading) {
             header
@@ -28,14 +31,6 @@ struct OrderView: View {
             order
         }
         .padding()
-        .task {
-            Task {
-                await refreshOrders()
-            }
-            Task {
-                await refreshPositions()
-            }
-        }
     }
     
     var header: some View {
@@ -59,12 +54,21 @@ struct OrderView: View {
     }
     
     var orderList: some View {
-        List(viewModel.orders) { order in
+        List(orders, id: \.orderID) { order in
             HStack {
-                Text(order)
-//                Text(order.timestamp, formatter: customDateFormatter)
-//                Text(order.action == .Buy ? "Buy" : "Sell")
-//                Text(order.ordStatus.rawValue)
+                HStack(alignment: .top, spacing: 4) {
+                    Text("\(order.symbol)")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(order.orderAction.rawValue)
+                        .fontWeight(.bold)
+                        .foregroundColor(order.orderAction == .buy ? .green : .red)
+                    Text("\(order.filledCount, specifier: "%.0f")/\(order.totalCount, specifier: "%.0f") @ \(order.limitPrice ?? order.stopPrice ?? 0, specifier: "%.2f")")
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(order.orderStatus)")
+                        .foregroundColor(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .listRowSeparator(.hidden)
@@ -74,36 +78,68 @@ struct OrderView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .refreshable {
-            await refreshOrders()
-        }
     }
     
     var positionList: some View {
-        List(viewModel.positions) { position in
-            HStack {
-                Text(position)
-//                Text(position, formatter: customDateFormatter)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowSeparator(.hidden)
-            .listSectionSeparator(.hidden)
-            .listRowBackground(Color.clear)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .refreshable {
-            await refreshOrders()
-        }
+        EmptyView()
+//        List() { position in
+//            HStack {
+////                Text(position)
+////                Text(position, formatter: customDateFormatter)
+//            }
+//            .frame(maxWidth: .infinity, alignment: .leading)
+//            .listRowSeparator(.hidden)
+//            .listSectionSeparator(.hidden)
+//            .listRowBackground(Color.clear)
+//        }
+//        .listStyle(.plain)
+//        .scrollContentBackground(.hidden)
+//        .frame(maxWidth: .infinity, maxHeight: .infinity)
+//        .refreshable {
+//            await refreshOrders()
+//        }
     }
     
     var order: some View {
         VStack {
             HStack(alignment: .top) {
-                Button("Buy Mkt") { print("buy") }
+                Button("Cancel All") {
+                    do {
+                        try trades.market.cancelAllOrders()
+                    } catch {
+                        print(error)
+                    }
+                    
+                }
+                Button("Buy Mkt") {
+                    guard let watcher, let bar = watcher.strategy.candles.last else { return }
+                    do {
+                        try trades.market.makeLimitWithTrailingStopOrder(
+                            contract: watcher.contract,
+                            action: .buy,
+                            price: bar.priceHigh,
+                            trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss)),
+                            quantity: Double(contractNumber)
+                        )
+                    } catch {
+                        print(error)
+                    }
+                }
                     .buttonStyle(TradingButtonStyle(backgroundColor: .green))
-                Button("Sell Mkt") { print("sell") }
+                Button("Sell Mkt") {
+                    guard let watcher, let bar = watcher.strategy.candles.last else { return }
+                    do {
+                        try trades.market.makeLimitWithTrailingStopOrder(
+                            contract: watcher.contract,
+                            action: .sell,
+                            price: bar.priceLow,
+                            trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss)),
+                            quantity: Double(contractNumber)
+                        )
+                    } catch {
+                        print(error)
+                    }
+                }
                     .buttonStyle(TradingButtonStyle(backgroundColor: .red))
                 HStack(alignment: .top) {
                     Text("Contract Count")
@@ -111,32 +147,10 @@ struct OrderView: View {
                 }
             }
             HStack(alignment: .top) {
-                Text("Take Profit (Market +%)")
-                TextField("Take Profit (Market +%)", value: $takeProfit, formatter: NumberFormatter())
-            }
-            HStack(alignment: .top) {
                 Text("Stop Loss (Market -%)")
                 TextField("Stop Loss (Market -%)", value: $stopLoss, formatter: NumberFormatter())
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-    
-    private func refreshOrders() async {
-        do {
-            viewModel.orders = try await viewModel.orders() ?? []
-        } catch {
-            viewModel.orders = []
-            print("🔴 Failed to load order list", error)
-        }
-    }
-    
-    private func refreshPositions() async {
-        do {
-            viewModel.positions = try await viewModel.positions() ?? []
-        } catch {
-            viewModel.positions = []
-            print("🔴 Failed to load order list", error)
-        }
     }
 }

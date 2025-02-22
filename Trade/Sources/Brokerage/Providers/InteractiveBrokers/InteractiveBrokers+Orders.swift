@@ -2,7 +2,8 @@ import Foundation
 import Combine
 import IBKit
 
-public extension InteractiveBrokers {
+extension InteractiveBrokers {
+    @discardableResult
     func limitWithTrailingStopOrder(
         contract: IBContract,
         action: IBAction,
@@ -10,7 +11,7 @@ public extension InteractiveBrokers {
         trailStopPrice: Double,
         quantity: Double
     ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = identifiers.first else { throw TradeError.requestError("Missing account identifier")}
+        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
         var limitOrder = IBOrder.limit(
             price, action: action, quantity: quantity, contract: contract, account: account
         )
@@ -26,18 +27,19 @@ public extension InteractiveBrokers {
         stopOrder.orderID = nextOrderID
         stopOrder.parentId = limitOrder.orderID
         
-        let limit = try placeOrder(stopOrder)
-        let trailingStop = try placeOrder(limitOrder)
+        let limit = try placeOrder(limitOrder)
+        let trailingStop = try placeOrder(stopOrder)
         return limit.merge(with: trailingStop).eraseToAnyPublisher()
     }
     
+    @discardableResult
     func limitOrder(
         contract: IBContract,
         action: IBAction,
         price: Double,
         quantity: Double
     ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = identifiers.first else { throw TradeError.requestError("Missing account identifier")}
+        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
         var limitOrder = IBOrder.limit(
             price, action: action, quantity: quantity, contract: contract, account: account
         )
@@ -45,6 +47,7 @@ public extension InteractiveBrokers {
         return try placeOrder(limitOrder)
     }
     
+    @discardableResult
     func trailingStopOrder(
         contract: IBContract,
         action: IBAction,
@@ -52,7 +55,7 @@ public extension InteractiveBrokers {
         trailStopPrice: Double,
         quantity: Double
     ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = identifiers.first else { throw TradeError.requestError("Missing account identifier")}
+        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
         var stopOrder = IBOrder.trailingStop(
             stopOffset: trailStopPrice,
             action: action,
@@ -98,3 +101,14 @@ extension IBOrderExecution: OrderEvent {}
 extension IBOrderExecutionEnd: OrderEvent {}
 extension IBOrderCompletion: OrderEvent {}
 extension IBOrderCompetionEnd: OrderEvent {}
+
+extension IBOrder: Order {
+    public var symbol: String { contract.symbol }
+    public var orderAction: OrderAction { self.action == .buy ? .buy : .sell }
+    public var limitPrice: Double? { lmtPrice }
+    public var stopPrice: Double? { auxPrice }
+    public var filledCount: Double { filledQuantity ?? 0 }
+    public var totalCount: Double { totalQuantity }
+    public var orderStatus: String { orderState.status.rawValue }
+    public var timestamp: Date? { orderState.completedTime }
+}
