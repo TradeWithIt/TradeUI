@@ -9,7 +9,7 @@ struct AccountSummaryView: View {
             VStack(alignment: .leading) {
                 Text("Account Name:")
                     .font(.headline)
-                Text("*********")//(account.name)
+                Text(account.name)
                     .fontWeight(.bold)
             }
             

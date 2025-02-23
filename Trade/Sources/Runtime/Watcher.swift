@@ -60,15 +60,41 @@ public class Watcher: Identifiable {
     
     private func setupMarketQuoteData(market: MarketData) async {
         do {
-            for await quote in try market.quotePublisher(contract: contract).values {
+            for await newQuote in try market.quotePublisher(contract: contract).values {
                 guard
-                    quote.contract.symbol == contract.symbol,
-                    quote.contract.exchangeId == contract.exchangeId,
-                    quote.contract.currency == contract.currency,
-                    quote.contract.type == contract.type
+                    newQuote.contract.symbol == contract.symbol,
+                    newQuote.contract.exchangeId == contract.exchangeId,
+                    newQuote.contract.currency == contract.currency,
+                    newQuote.contract.type == contract.type
                 else { continue }
                 
-                await MainActor.run { self.quote = quote }
+                await MainActor.run {
+                    if var existingQuote = self.quote {
+                        switch newQuote.type {
+                        case .bidPrice:
+                            existingQuote.bidPrice = newQuote.value
+                        case .askPrice:
+                            existingQuote.askPrice = newQuote.value
+                        case .lastPrice:
+                            existingQuote.lastPrice = newQuote.value
+                        case .volume:
+                            existingQuote.volume = newQuote.value
+                        case .none:
+                            break
+                        }
+                        existingQuote.date = Date()  // Update timestamp
+                        self.quote = existingQuote
+                    } else {
+                        self.quote = Quote(
+                            contract: contract,
+                            date: Date(),
+                            bidPrice: newQuote.type == .bidPrice ? newQuote.value : nil,
+                            askPrice: newQuote.type == .askPrice ? newQuote.value : nil,
+                            lastPrice: newQuote.type == .lastPrice ? newQuote.value : nil,
+                            volume: newQuote.type == .volume ? newQuote.value : nil
+                        )
+                    }
+                }
             }
         } catch {
             print("Quote stream error: \(error)")

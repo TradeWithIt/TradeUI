@@ -110,6 +110,7 @@ struct OrderView: View {
                     }
                     
                 }
+                .buttonStyle(TradingButtonStyle(backgroundColor: .gray))
                 Button("Buy Mkt") {
                     guard let watcher, let bar = watcher.strategy.candles.last else { return }
                     do {
@@ -124,7 +125,7 @@ struct OrderView: View {
                         print(error)
                     }
                 }
-                    .buttonStyle(TradingButtonStyle(backgroundColor: .green))
+                .buttonStyle(TradingButtonStyle(backgroundColor: .green))
                 Button("Sell Mkt") {
                     guard let watcher, let bar = watcher.strategy.candles.last else { return }
                     do {
@@ -139,7 +140,7 @@ struct OrderView: View {
                         print(error)
                     }
                 }
-                    .buttonStyle(TradingButtonStyle(backgroundColor: .red))
+                .buttonStyle(TradingButtonStyle(backgroundColor: .red))
                 HStack(alignment: .top) {
                     Text("Contract Count")
                     TextField("Contract Count", value: $contractNumber, formatter: NumberFormatter())

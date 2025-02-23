@@ -4,17 +4,29 @@ import Brokerage
 import TradingStrategy
 
 public struct WatcherView: View {
-    @State var bidPrice: String = "-"
-    @State var askPrice: String = "-"
-    @State var lastPrice: String = "-"
-    @State var volume: String = "-"
-    
     let watcher: Watcher?
-    
+
     public init(watcher: Watcher?) {
         self.watcher = watcher
     }
-    
+
+    // Computed properties to get the latest values from `Quote`
+    private var bidPrice: String {
+        formatPrice(watcher?.quote?.bidPrice)
+    }
+
+    private var askPrice: String {
+        formatPrice(watcher?.quote?.askPrice)
+    }
+
+    private var lastPrice: String {
+        formatPrice(watcher?.quote?.lastPrice)
+    }
+
+    private var volume: String {
+        formatPrice(watcher?.quote?.volume)
+    }
+
     public var body: some View {
         if let watcher {
             StrategyChart(
@@ -26,25 +38,24 @@ public struct WatcherView: View {
                         tickView(title: "BID", value: bidPrice)
                         tickView(title: "ASK", value: askPrice)
                         tickView(title: "Volume", value: volume)
+                        Text("\(watcher.contract.symbol)")
+                            .font(.headline)
+                            .foregroundColor(.primary)
                     }
                 }
             )
             .id(watcher.id)
-            .onChange(of: watcher.quote) {
-                guard let type = watcher.quote?.type else { return }
-                switch type {
-                case .lastPrice: lastPrice = String(format: "%.2f", watcher.quote?.value ?? 0)
-                case .bidPrice: bidPrice = String(format: "%.2f", watcher.quote?.value ?? 0)
-                case .askPrice: askPrice = String(format: "%.2f", watcher.quote?.value ?? 0)
-                case .volume: volume = String(format: "%.2f", watcher.quote?.value ?? 0)
-                }
-                
-            }
         } else {
             ChartView(interval: 60, data: [])
         }
     }
-    
+
+    // Helper function to format price safely
+    private func formatPrice(_ value: Double?) -> String {
+        guard let value else { return "-" }
+        return String(format: "%.2f", value)
+    }
+
     private func tickView(title: String, value: String) -> some View {
         VStack {
             Text(title).font(.footnote)
