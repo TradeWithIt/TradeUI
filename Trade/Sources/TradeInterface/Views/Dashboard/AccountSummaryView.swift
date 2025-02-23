@@ -6,15 +6,10 @@ struct AccountSummaryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Account Summary")
-                .font(.title)
-                .fontWeight(.bold)
-            
-            HStack {
+            VStack(alignment: .leading) {
                 Text("Account Name:")
                     .font(.headline)
-                Spacer()
-                Text(account.name)
+                Text("*********")//(account.name)
                     .fontWeight(.bold)
             }
             
@@ -52,11 +47,10 @@ struct AccountSummaryView: View {
 
     // Helper function to format account metrics
     private func accountMetricRow(title: String, value: Double, currency: String? = nil, isPercentage: Bool = false) -> some View {
-        HStack {
+        VStack(alignment: .leading) {
             Text(title + ":")
                 .font(.subheadline)
                 .foregroundColor(.gray)
-            Spacer()
             Text(isPercentage ? String(format: "%.2f%%", value * 100) : formattedCurrency(value: value, currency: currency))
                 .font(.subheadline)
                 .fontWeight(.bold)

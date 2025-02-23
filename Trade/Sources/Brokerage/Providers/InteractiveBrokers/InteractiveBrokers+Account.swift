@@ -10,7 +10,8 @@ public extension InteractiveBrokers {
         print("🚀 Start Listening: \(accountId)")
         do {
             try client.subscribePositions()
-            try client.requestOpenOrders()
+            try client.requestAllOpenOrders()
+            try client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
             try client.subscribeAccountSummary(client.nextRequestID, accountGroup: accountId)
         } catch {
             print("Failed to Listen for Account updates with error: \(error)")
@@ -20,8 +21,41 @@ public extension InteractiveBrokers {
     // MARK: - Update Account Data
     func updateAccountData(event: IBAccountUpdate) {
         guard var account = accounts[event.accountName] else { return }
-        account.currency = event.currency
+        
+        let value: String = event.value
+        let currency: String = event.currency
+        let doubleValue: Double? = Double(value)  // Safely convert value to Double
+        
+        switch event.key {
+        case .AccountCode:
+            account.name = value
+            
+        case .AvailableFunds:
+            account.availableFunds = doubleValue ?? 0.0
+        case .BuyingPower:
+            account.buyingPower = doubleValue ?? 0.0
+        case .ExcessLiquidity:
+            account.excessLiquidity = doubleValue ?? 0.0
+            
+        case .InitMarginReq:
+            account.initialMargin = doubleValue ?? 0.0
+        case .MaintMarginReq:
+            account.maintenanceMargin = doubleValue ?? 0.0
+            
+        case .NetLiquidation:
+            account.netLiquidation = doubleValue ?? 0.0
+        case .TotalCashValue, .TotalCashValueC, .TotalCashValueS:
+            if let amount = doubleValue {
+                account.cashBook.append(Balance(currency: currency, amount: amount))
+            }
+            
+        default:
+            print("⚠️ Unhandled account event: \(event.key)")
+        }
+        
+        account.updatedAt = Date()
         accounts[event.accountName] = account
+        print("✅ Account updated: \(account)")
     }
     
     func updateAccountData(event: IBAccountSummary) {
@@ -95,6 +129,7 @@ public extension InteractiveBrokers {
     }
     
     func updateAccountOrders(event: OrderEvent) {
+        print("🟡 Update Account Orders", event.self)
         switch event {
         case let event as IBOpenOrder:
             guard let accountId = event.order.account else { return }

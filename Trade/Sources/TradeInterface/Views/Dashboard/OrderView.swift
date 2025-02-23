@@ -63,6 +63,15 @@ struct OrderView: View {
                     
                     Text("\(order.orderStatus)")
                         .foregroundColor(.secondary)
+                    Spacer(minLength: 0)
+                    Button("Cancel") {
+                        do {
+                            try trades.market.cancelOrder(orderId: order.orderID)
+                        } catch {
+                            print(error)
+                        }
+                        
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

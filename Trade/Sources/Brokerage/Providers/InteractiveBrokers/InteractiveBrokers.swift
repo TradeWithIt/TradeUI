@@ -19,7 +19,8 @@ public class InteractiveBrokers: Market {
     }
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
-    let client = IBClient.paper(id: 0, type: .gateway)
+//    let client = IBClient.paper(id: 0, type: .gateway)
+    let client = IBClient.paper(id: 4688251, type: .workstation)
     var subscriptions: [AnyCancellable] = []
     var accounts: [String: Account] = [:]
     
