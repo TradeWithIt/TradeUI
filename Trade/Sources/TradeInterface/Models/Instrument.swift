@@ -19,6 +19,14 @@ struct Instrument: Codable, Contract {
 
 extension Instrument {
     // MARK: Equity
+    static var CBA: Instrument {
+        Instrument(
+            type: "STK",
+            symbol: "CBA",
+            exchangeId: "ASX",
+            currency: "AUD"
+        )
+    }
     
     static var APPL: Instrument {
         Instrument(

@@ -32,6 +32,7 @@ struct DashboardView: View {
                 )
             }
             Divider()
+            suggestionView(contract: Instrument.CBA, interval: 300)
             suggestionView(contract: Instrument.APPL, interval: 300)
             suggestionView(contract: Instrument.BTC, interval: 300)
             suggestionView(contract: Instrument.ETH, interval: 300)
