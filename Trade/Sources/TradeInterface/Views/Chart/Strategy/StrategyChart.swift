@@ -66,7 +66,7 @@ public struct StrategyChart<Q: View>: View {
                 // Moving Average shorTermLength: Int = 8
                 Path.quadCurvedPathWithPoints(
                     points: strategy.shortTermMA.enumerated()
-                        .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
+                        .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
                     canvas: frame
                 )
                 .stroke(Color.blue)
@@ -74,7 +74,7 @@ public struct StrategyChart<Q: View>: View {
                 // Resistance  Levels
                 ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
                     let resistance = strategy.levels.resistance[i]
-                    let point = resistance.level.toPoint(atTime: resistance.time, scale: scale, canvasSize: frame.size)
+                    let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
                     Path.pathWithPoints(
                         points: [point, CGPoint(x: frame.maxX, y: point.y)],
                         canvas: frame
@@ -85,7 +85,7 @@ public struct StrategyChart<Q: View>: View {
                 // Support Levels
                 ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
                     let support = strategy.levels.support[i]
-                    let point = support.level.toPoint(atTime: support.time, scale: scale, canvasSize: frame.size)
+                    let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
                     Path.pathWithPoints(
                         points: [point, CGPoint(x: frame.maxX, y: point.y)],
                         canvas: frame
@@ -121,7 +121,7 @@ public struct StrategyChart<Q: View>: View {
             
             Path.quadCurvedPathWithPoints(
                 points: strategy.longTermMA.enumerated()
-                    .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) }),
+                    .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
                 canvas: frame
             )
             .stroke(Color.purple)
@@ -129,7 +129,7 @@ public struct StrategyChart<Q: View>: View {
             // Resistance  Levels
             ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
                 let resistance = strategy.levels.resistance[i]
-                let point = resistance.level.toPoint(atTime: resistance.time, scale: scale, canvasSize: frame.size)
+                let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
                 Path.pathWithPoints(
                     points: [point, CGPoint(x: frame.maxX, y: point.y)],
                     canvas: frame
@@ -140,7 +140,7 @@ public struct StrategyChart<Q: View>: View {
             // Support Levels
             ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
                 let support = strategy.levels.support[i]
-                let point = support.level.toPoint(atTime: support.time, scale: scale, canvasSize: frame.size)
+                let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
                 Path.pathWithPoints(
                     points: [point, CGPoint(x: frame.maxX, y: point.y)],
                     canvas: frame
@@ -166,7 +166,7 @@ public struct StrategyChart<Q: View>: View {
                     width: Swift.max(
                         0,
                         scale.width(
-                            candles[phases[i].range.upperBound].timeClose - candles[phases[i].range.lowerBound].timeOpen,
+                            phases[i].range.length,
                             size: frame.size
                         )
                     ),
@@ -179,8 +179,8 @@ public struct StrategyChart<Q: View>: View {
                     )
                 )
                 .position(
-                    (min + (max - min) * 0.5).toPoint(
-                        atTime: candles[phases[i].range.lowerBound].timeOpen + (candles[phases[i].range.upperBound].timeClose - candles[phases[i].range.lowerBound].timeOpen) / 2.0,
+                    (min + (max - min) * 0.5).yToPoint(
+                        atIndex: phases[i].range.lowerBound + (phases[i].range.length / 2),
                         scale: scale,
                         canvasSize: frame.size
                     )

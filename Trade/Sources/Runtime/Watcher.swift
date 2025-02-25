@@ -197,7 +197,6 @@ public class Watcher: Identifiable {
     
     private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) -> (any Strategy)? {
         guard let strategy, strategy.patternIdentified, let entryBar = strategy.candles.last else { return strategy }
-                
         let units = strategy.evaluateEntry(equity: 1000000)
         guard units > 0 else { return strategy }
         

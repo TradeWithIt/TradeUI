@@ -8,14 +8,15 @@ struct OrderView: View {
     @State private var contractNumber: Int32 = 1
     @State private var stopLoss: Int = 10
     @State private var whichList = 0
+    let account: Account?
     let watcher: Watcher?
     
     var orders: [Order] {
-        trades.market.getOrders()
+        account?.orders.values.map { $0 } ?? []
     }
     
     var positions: [Position] {
-        trades.market.getPositions()
+        account?.positions ?? []
     }
     
     var body: some View {

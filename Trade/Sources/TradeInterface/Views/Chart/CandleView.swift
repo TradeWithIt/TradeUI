@@ -27,7 +27,7 @@ struct CandleView: View {
     }
     
     private var bodyWidth: Double {
-        kline.duration / scale.x * canvasSize.width * 0.9
+        (canvasSize.width / scale.x)  * 0.9
     }
 
     init(kline: Klines, canvasSize: CGSize, scale: CGPoint) {

@@ -26,10 +26,9 @@ extension InteractiveBrokers {
         )
         stopOrder.orderID = nextOrderID
         stopOrder.parentId = limitOrder.orderID
-        
-        let limit = try placeOrder(limitOrder)
-        let trailingStop = try placeOrder(stopOrder)
-        return limit.merge(with: trailingStop).eraseToAnyPublisher()
+        return try placeOrder(stopOrder)
+            .merge(with: try placeOrder(limitOrder))
+            .eraseToAnyPublisher()
     }
     
     @discardableResult
@@ -96,6 +95,7 @@ extension InteractiveBrokers {
 public protocol OrderEvent{}
 extension IBOrder: OrderEvent {}
 extension IBOpenOrder: OrderEvent {}
+extension IBOpenOrderEnd: OrderEvent {}
 extension IBOrderStatus: OrderEvent {}
 extension IBOrderExecution: OrderEvent {}
 extension IBOrderExecutionEnd: OrderEvent {}

@@ -5,14 +5,20 @@ import IBKit
 public extension InteractiveBrokers {
     // MARK: - Start Listening to Account Updates
     func startListening(accountId: String) {
-        guard self.accounts[accountId] == nil else { return }
-        self.accounts[accountId] = Account(name: accountId)
+        if self.accounts[accountId] == nil {
+            self.accounts[accountId] = Account(name: accountId)
+        }
         print("🚀 Start Listening: \(accountId)")
         do {
-            try client.subscribePositions()
-            try client.requestAllOpenOrders()
-            try client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
+            print("🔵 OpenOrders")
             try client.subscribeAccountSummary(client.nextRequestID, accountGroup: accountId)
+            try client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
+            print("🔵 OpenOrders")
+            try client.requestOpenOrders()
+            try client.requestAllOpenOrders()
+            try client.requestExecutions(client.nextRequestID)
+            print("🔵 Positions")
+            try client.subscribePositions()
         } catch {
             print("Failed to Listen for Account updates with error: \(error)")
         }
@@ -29,7 +35,6 @@ public extension InteractiveBrokers {
         switch event.key {
         case .AccountCode:
             account.name = value
-            
         case .AvailableFunds:
             account.availableFunds = doubleValue ?? 0.0
         case .BuyingPower:
@@ -41,7 +46,6 @@ public extension InteractiveBrokers {
             account.initialMargin = doubleValue ?? 0.0
         case .MaintMarginReq:
             account.maintenanceMargin = doubleValue ?? 0.0
-            
         case .NetLiquidation:
             account.netLiquidation = doubleValue ?? 0.0
         case .TotalCashValue, .TotalCashValueC, .TotalCashValueS:
@@ -50,12 +54,11 @@ public extension InteractiveBrokers {
             }
             
         default:
-            print("⚠️ Unhandled account event: \(event.key)")
+            break
         }
         
         account.updatedAt = Date()
         accounts[event.accountName] = account
-        print("✅ Account updated: \(account)")
     }
     
     func updateAccountData(event: IBAccountSummary) {
@@ -63,8 +66,6 @@ public extension InteractiveBrokers {
         let value = event.value
         
         switch event.key {
-        case .accountType:
-            print("Account Type: \(value)")
         case .netLiquidation:
             account.netLiquidation = value
         case .totalCash, .settledCash, .accruedCash:
@@ -82,12 +83,11 @@ public extension InteractiveBrokers {
         case .leverege:
             account.leverage = value
         default:
-            print("⚠️ Unhandled account event: \(event.key)")
+            break
         }
         
         account.updatedAt = Date()
         accounts[event.accountName] = account
-        print("✅ Account updated: \(account)")
     }
 
     // MARK: - Update Positions
@@ -129,7 +129,6 @@ public extension InteractiveBrokers {
     }
     
     func updateAccountOrders(event: OrderEvent) {
-        print("🟡 Update Account Orders", event.self)
         switch event {
         case let event as IBOpenOrder:
             guard let accountId = event.order.account else { return }
@@ -143,7 +142,6 @@ public extension InteractiveBrokers {
         case let event as IBOrderExecution:
             let filledQuantity = self.accounts[event.account]?.orders[event.orderID]?.filledCount ?? 0
             self.accounts[event.account]?.orders[event.orderID]?.filledCount = filledQuantity + event.shares
-        
         case let event as IBOrderCompletion:
             guard let accountId = event.order.account else { return }
             self.accounts[accountId]?.orders[event.order.orderID] = nil

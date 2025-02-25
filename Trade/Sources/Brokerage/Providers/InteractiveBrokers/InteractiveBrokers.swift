@@ -20,7 +20,7 @@ public class InteractiveBrokers: Market {
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
 //    let client = IBClient.paper(id: 0, type: .gateway)
-    let client = IBClient.paper(id: 4688251, type: .workstation)
+    let client = IBClient.paper(id: 0, type: .workstation)
     var subscriptions: [AnyCancellable] = []
     var accounts: [String: Account] = [:]
     
@@ -31,9 +31,20 @@ public class InteractiveBrokers: Market {
     /// Return next valid request identifier you should use to make request or subscription
     private var _nextOrderId: Int = 0
     public var nextOrderID: Int {
-        let value = _nextOrderId
+        let now = Date()
+        let calendar = Calendar(identifier: .gregorian)
+        let utcComponents = calendar.dateComponents(in: .gmt, from: now)
+        
+        guard let day = utcComponents.day,
+              let hour = utcComponents.hour,
+              let minute = utcComponents.minute,
+              let second = utcComponents.second else { return _nextOrderId }
+        
+        // Construct unique order ID: day + hour + minute + second + _nextOrderId
+        let orderID = Int("\(String(format: "%02d", day))\(String(format: "%02d", hour))\(String(format: "%02d", minute))\(String(format: "%02d", second))\(String(format: "%d", _nextOrderId))") ?? _nextOrderId
+        
         _nextOrderId += 1
-        return value
+        return orderID
     }
     
     private var unsubscribeMarketData: Set<Asset> = []
@@ -205,14 +216,6 @@ public class InteractiveBrokers: Market {
     
     public func cancelOrder(orderId: Int) throws {
         try client.cancelOrder(orderId)
-    }
-    
-    public func getOrders() -> [Order] {
-        return accounts.values.flatMap { $0.orders.values }
-    }
-    
-    public func getPositions() -> [Position] {
-        return accounts.values.flatMap { $0.positions }
     }
     
     public func makeLimitOrder(

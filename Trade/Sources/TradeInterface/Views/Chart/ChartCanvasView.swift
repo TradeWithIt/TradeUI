@@ -40,7 +40,7 @@ public struct ChartCanvasView<O: View, B: View>: View {
             }
             canvasBackground(scale, proxy.frame(in: .local))
             ForEach(Array(data.enumerated()), id: \.element.timeOpen) { index, kline in
-                drawCandle(kline: kline, proxy: proxy)
+                drawCandle(kline: kline, index: index, proxy: proxy)
                     .onTapGesture {
                         print("🕯️ Tapped index: \(index), Kline: \(kline)")
                     }
@@ -50,9 +50,9 @@ public struct ChartCanvasView<O: View, B: View>: View {
         .clipped()
     }
 
-    private func drawCandle(kline: Klines, proxy: GeometryProxy) -> some View {
-        let offsetX = (kline.timeOpen - scale.x.lowerBound) / scale.amplitiude.width * proxy.size.width
-        let offsetY = (Double(scale.y.upperBound) - kline.priceHigh) / scale.amplitiude.height * proxy.size.height
+    private func drawCandle(kline: Klines, index: Int, proxy: GeometryProxy) -> some View {
+        let offsetX = scale.x(index, size: proxy.size)
+        let offsetY = scale.y(kline.priceHigh, size: proxy.size)
         return CandleView(
             kline: kline,
             canvasSize: proxy.size,

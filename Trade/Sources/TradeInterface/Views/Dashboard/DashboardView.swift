@@ -143,7 +143,7 @@ struct DashboardView: View {
     }
     
     var controlPanel: some View {
-        OrderView(watcher: trades.watcher)
+        OrderView(account: account, watcher: trades.watcher)
     }
     
     private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) {

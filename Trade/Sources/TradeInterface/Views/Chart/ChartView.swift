@@ -91,7 +91,7 @@ public struct ChartView<O: View, B: View>: View {
         }
         .onChange(of: data.last?.timeOpen, initial: true) {
             Task {
-                let newScale = Scale(data: data, interval: interval)
+                let newScale = Scale(data: data)
                 await MainActor.run {
                     scaleOriginal = newScale
                     if !isManuallyDisplaced {
@@ -115,8 +115,10 @@ public struct ChartView<O: View, B: View>: View {
             let scaleY = scaleDrag?.y ?? scaleOriginal.y
             let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
             let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitiude
+            
+            let barCount = scale.barCount(forLength: xValueChange, size: canvasSize)
             scale = Scale(
-                x: (scaleX.lowerBound - xValueChange)..<(scaleX.upperBound - xValueChange),
+                x: (scaleX.lowerBound - barCount)..<(scaleX.upperBound - barCount),
                 y: (scaleY.lowerBound + yValueChange)..<(scaleY.upperBound + yValueChange)
             )
             updateScales(x: scale.x, y: scale.y)
@@ -148,9 +150,10 @@ public struct ChartView<O: View, B: View>: View {
             guard abs(gesture.translation.width) > abs(gesture.translation.height) else { return }
             let scaleX = scaleDrag?.x ?? scaleOriginal.x
             let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
-            let lower = scaleX.lowerBound - xValueChange
-            let upper = scaleX.upperBound + xValueChange
-            if lower > 0, upper > 0, lower < upper, (upper - lower) >= 10.0 {
+            let barCount = scale.barCount(forLength: xValueChange, size: canvasSize)
+            let lower = scaleX.lowerBound - barCount
+            let upper = scaleX.upperBound + barCount
+            if lower > 0, upper > 0, lower < upper, (upper - lower) >= 10 {
                 scale.x = lower..<upper
                 updateScales(x: scale.x)
             }
@@ -168,7 +171,7 @@ public struct ChartView<O: View, B: View>: View {
         updateScales(x: scale.x, y: scale.y)
     }
     
-    private func updateScales(x: Range<TimeInterval>? = nil, y: Range<Double>? = nil) {
+    private func updateScales(x: Range<Int>? = nil, y: Range<Double>? = nil) {
         if let x = x {
             var times: [String] = []
             let formatter = DateFormatter()
@@ -177,10 +180,12 @@ public struct ChartView<O: View, B: View>: View {
             formatter.calendar = calendar
             formatter.dateFormat = "HH:mm:ss a\ndd.MM"
             
-            var date = Date(timeIntervalSince1970: x.lowerBound + scale.xGuideStep / 2)
-            while date <= Date(timeIntervalSince1970: x.upperBound) {
-                times.append(formatter.string(from: date))
-                date = calendar.date(byAdding: .second, value: Int(scale.xGuideStep), to: date)!
+            var index = x.lowerBound
+            while index < x.upperBound {
+                guard index >= 0, data.count > index else { break }
+                let data = Date(timeIntervalSince1970: data[index].timeOpen)
+                times.append(formatter.string(from: data))
+                index += scale.xGuideStep
             }
             withAnimation { labelsHorizontal = times }
         }
