@@ -85,6 +85,25 @@ public class InteractiveBrokers: Market {
         }
     }
     
+    private func contract(_ product: any Contract) -> IBContract {
+        let contract: IBContract
+        if product.type == IBSecuritiesType.future.rawValue {
+            contract = IBContract.future(
+                localSymbol: product.symbol,
+                currency: product.currency,
+                exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
+            )
+        } else {
+            contract = IBContract(
+                symbol: product.symbol,
+                secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
+                currency: product.currency,
+                exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
+            )
+        }
+        return contract
+    }
+    
     // MARK: - Market Symbol Search
     
     public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error> {
@@ -106,12 +125,7 @@ public class InteractiveBrokers: Market {
         interval: TimeInterval,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract(
-            symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
-            currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
-        )
+        let contract = self.contract(product)
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         let barSize = IBBarSize(timeInterval: interval)
         unsubscribeMarketData.remove(Asset(contract: product, interval: interval))
@@ -130,14 +144,8 @@ public class InteractiveBrokers: Market {
         endDate: Date? = nil,
         userInfo: [String: Any]
     ) throws -> AnyPublisher<CandleData, Never> {
-        let contract = IBContract(
-            symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
-            currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
-        )
-        return try historicBarPublisher(
-            contract: contract,
+        try historicBarPublisher(
+            contract: self.contract(product),
             barSize: IBBarSize(timeInterval: interval),
             duration: DateInterval(start: startDate, end: endDate ?? Date())
         )
@@ -224,14 +232,8 @@ public class InteractiveBrokers: Market {
         price: Double,
         quantity: Double
     ) throws {
-        let contract = IBContract(
-            symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
-            currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
-        )
         try limitOrder(
-            contract: contract,
+            contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
             quantity: quantity
@@ -245,14 +247,8 @@ public class InteractiveBrokers: Market {
         trailStopPrice: Double,
         quantity: Double
     ) throws {
-        let contract = IBContract(
-            symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
-            currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .SMART
-        )
         try limitWithTrailingStopOrder(
-            contract: contract,
+            contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
             trailStopPrice: trailStopPrice,
@@ -270,12 +266,7 @@ public class InteractiveBrokers: Market {
     /// - extendedSession: include data from extended trading hours
     public func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never> {
         let requestID = client.nextRequestID
-        let contract = IBContract(
-            symbol: product.symbol,
-            secType: IBSecuritiesType(rawValue: product.type) ?? .stock,
-            currency: product.currency,
-            exchange: IBExchange(rawValue: product.exchangeId) ?? .CME
-        )
+        let contract = self.contract(product)
         let publisher =  client.eventFeed
             .compactMap { $0 as? IBIndexedEvent }
             .filter { $0.requestID == requestID }
