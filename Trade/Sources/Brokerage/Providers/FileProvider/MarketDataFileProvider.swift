@@ -115,6 +115,8 @@ public class MarketDataFileProvider: MarketData {
         )
     }
     
+    public func tradingHour(_ product: any Contract) async throws -> [TradingHour] { return [] }
+    
     private func marketDataFile(_ url: URL) throws -> MarketDataFile {
         var url = url
         let marketDataFile: MarketDataFile

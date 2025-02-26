@@ -36,4 +36,5 @@ public protocol MarketData {
     ///   - interval: Bar interval
     func unsubscribeMarketData(contract: any Contract, interval: TimeInterval)
     func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never>
+    func tradingHour(_ product: any Contract) async throws -> [TradingHour]
 }

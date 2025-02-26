@@ -112,7 +112,7 @@ public extension InteractiveBrokers {
             // Create a new position if not present
             let newPosition = Position(
                 type: value.contract.securitiesType.rawValue,
-                symbol: value.contract.symbol,
+                symbol: value.contract.localSymbol ?? value.contract.symbol,
                 exchangeId: value.contract.exchange?.rawValue ?? "",
                 currency: value.contract.currency,
                 contractID: contractID,
@@ -168,7 +168,7 @@ public extension InteractiveBrokers {
         } else if position.position > 0 {
             let newPosition = Position(
                 type: position.contract.type,
-                symbol: position.contract.symbol,
+                symbol: position.contract.localSymbol ?? position.contract.symbol,
                 exchangeId: position.contract.exchangeId,
                 currency: position.contract.currency,
                 contractID: position.contract.id ?? 0,

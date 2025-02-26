@@ -174,6 +174,45 @@ public class InteractiveBrokers: Market {
         )
     }
     
+    public func tradingHour(_ product: any Contract) async throws -> [TradingHour] {
+        let details = try await contractDetails(product)
+        return details.liquidHours?.map {
+            TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
+        } ?? []
+    }
+    
+    private func contractDetails(_ product: any Contract) async throws -> IBContractDetails {
+        let requestID = client.nextRequestID
+        let request = IBContractDetailsRequest(requestID: requestID, contract: self.contract(product))
+        try client.send(request: request)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var subscription: AnyCancellable?
+
+            subscription = self.client.eventFeed
+                .setFailureType(to: Swift.Error.self)
+                .compactMap { $0 as? IBIndexedEvent }
+                .filter { $0.requestID == requestID }
+                .compactMap { $0 as? IBContractDetails }
+                .sink(
+                    receiveCompletion: { completion in
+                        self.subscriptions.removeAll { $0 === subscription }
+                        if case .failure(let error) = completion {
+                            continuation.resume(throwing: error)
+                        }
+                    },
+                    receiveValue: { value in
+                        self.subscriptions.removeAll { $0 === subscription }
+                        continuation.resume(returning: value)
+                    }
+                )
+
+            if let sub = subscription {
+                self.subscriptions.append(sub)
+            }
+        }
+    }
+    
     // MARK: Private IB Type handling
     
     private func unsubscribeMarketData(_ requestID: Int) {

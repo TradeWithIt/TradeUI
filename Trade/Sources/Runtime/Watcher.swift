@@ -33,10 +33,11 @@ public class Watcher: Identifiable {
     
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
-    private var market: Market?
+    private var marketOrder: MarketOrder?
+    private var tradingHours: [TradingHour] = []
     
     deinit {
-        market = nil
+        marketOrder = nil
         quoteTask?.cancel()
         marketDataTask?.cancel()
     }
@@ -57,6 +58,7 @@ public class Watcher: Identifiable {
         
         quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
         marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
+        Task { self.tradingHours = try await marketData.tradingHour(contract) }
     }
     
     private func setupMarketQuoteData(market: MarketData) async {
@@ -179,7 +181,7 @@ public class Watcher: Identifiable {
     
     private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) {
         guard
-            let account = market?.account,
+            let account = marketOrder?.account,
             let strategy, strategy.patternIdentified,
             let entryBar = strategy.candles.last
         else { return }
@@ -200,14 +202,29 @@ public class Watcher: Identifiable {
     
     private func evaluateMarketCoonditions(trade: Trade) {
         // TODO: 1. Check for market alerts
-        // TODO: 2. Check for market open hours and time
+        let marketOpen = tradingHours.isMarketOpen()
+        guard
+            marketOpen.isOpen,
+            let timeUntilClose = marketOpen.timeUntilClose,
+            timeUntilClose > (interval * 20)
+        else { return }
         self.activeTrade = trade
     }
     
     private func manageActiveTrade(strategy: (any Strategy)) {
-        guard let activeTrade else { return }
+        guard let activeTrade, let account = marketOrder?.account else { return }
         guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
-        // TODO: 1. Sell/Buy positions
+        guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
+        do {
+            try marketOrder?.makeLimitOrder(
+                contract: contract,
+                action: activeTrade.entryBar.isLong ? .sell : .buy,
+                price: position.averageCost,
+                quantity: position.quantity
+            )
+        } catch {
+            print("Something went wrong while exiting trade: \(error)")
+        }
         print("❌ Exiting trade at \(activeTrade)")
     }
 }

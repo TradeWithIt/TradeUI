@@ -113,7 +113,7 @@ extension IBOrderCompletion: OrderEvent {}
 extension IBOrderCompetionEnd: OrderEvent {}
 
 extension IBOrder: Order {
-    public var symbol: String { contract.symbol }
+    public var symbol: String {  contract.localSymbol ?? contract.symbol }
     public var orderAction: OrderAction { self.action == .buy ? .buy : .sell }
     public var limitPrice: Double? { lmtPrice }
     public var stopPrice: Double? { auxPrice }
