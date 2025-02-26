@@ -186,8 +186,10 @@ public class Watcher: Identifiable {
             let entryBar = strategy.candles.last
         else { return }
         
-        // TODO: Save snapshot
+        // 5 sec before bar closes
+        guard Date().timeIntervalSince1970 >= (entryBar.timeClose - 5) else { return }
         
+        // TODO: Save snapshot
         let units = strategy.unitCount(equity: account.buyingPower)
         guard units > 0 else { return }
         
