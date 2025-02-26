@@ -12,13 +12,18 @@ extension InteractiveBrokers {
         quantity: Double
     ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
         guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
+        //This will be our main or "parent" order
         var limitOrder = IBOrder.limit(
             price, action: action, quantity: quantity, contract: contract, account: account
         )
         limitOrder.orderID = nextOrderID
+        //The parent and children orders will need this attribute set to false to prevent accidental executions.
+        //The LAST CHILD will have it set to true,
+        limitOrder.transmit = false
         
         var stopOrder = IBOrder.trailingStop(
-            stopOffset: trailStopPrice,
+            stop: trailStopPrice,
+            limit: price,
             action: action == .buy ? .sell: .buy,
             quantity: quantity,
             contract: contract,
@@ -26,8 +31,11 @@ extension InteractiveBrokers {
         )
         stopOrder.orderID = nextOrderID
         stopOrder.parentId = limitOrder.orderID
-        return try placeOrder(stopOrder)
-            .merge(with: try placeOrder(limitOrder))
+        //In this case, the low side order will be the last child being sent. Therefore, it needs to set this attribute to true
+        //to activate all its predecessors
+        stopOrder.transmit = true
+        return try placeOrder(limitOrder)
+            .merge(with: try placeOrder(stopOrder))
             .eraseToAnyPublisher()
     }
     
@@ -51,12 +59,14 @@ extension InteractiveBrokers {
         contract: IBContract,
         action: IBAction,
         parentOrderId: Int = 0,
+        price: Double,
         trailStopPrice: Double,
         quantity: Double
     ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
         guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
         var stopOrder = IBOrder.trailingStop(
-            stopOffset: trailStopPrice,
+            stop: trailStopPrice,
+            limit: price,
             action: action,
             quantity: quantity,
             contract: contract,
@@ -87,7 +97,7 @@ extension InteractiveBrokers {
             }
             .eraseToAnyPublisher()
         
-        try client.placeOrder(requestID, order: order)
+        try client.placeOrder(order.orderID, order: order)
         return publisher
     }
 }

@@ -13,11 +13,10 @@ public class Watcher: Identifiable {
     public private(set) var quote: Quote?
     public private(set) var interval: TimeInterval
     public private(set) var strategy: Strategy
-    public private(set) var activeTrade: Klines? = nil
+    public private(set) var activeTrade: Trade? = nil
 
     private let userInfo: [String: Any]
     private let strategyType: Strategy.Type
-    private var counter: Int = 0
     private var candles: OrderedSet<Bar> {
         OrderedSet((strategy.candles as? [Bar]) ?? [])
     }
@@ -34,8 +33,10 @@ public class Watcher: Identifiable {
     
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
+    private var market: Market?
     
     deinit {
+        market = nil
         quoteTask?.cancel()
         marketDataTask?.cancel()
     }
@@ -125,32 +126,13 @@ public class Watcher: Identifiable {
                 
                 let bars = updateBars(candlesData.bars)
                 let strat = updateStrategy(bars: bars)
-                let validStrategy = enterTradeIfStrategyIsValidated(strategy: strat) ?? strat
-                
-                if validStrategy.patternIdentified {
-                    self.counter = 9
-                    Task.detached { [weak self] in
-                        self?.snapshotData(fileProvider: fileProvider, candles: validStrategy.candles)
-                    }
-                }
-                if self.counter == 1 {
-                    Task.detached { [weak self] in
-                        self?.snapshotData(fileProvider: fileProvider, candles: validStrategy.candles)
-                    }
-                }
-                if self.counter > 0 { self.counter -= 1 }
-                
-                manageActiveTrade(strategy: validStrategy)
-                
-                await MainActor.run { self.strategy = validStrategy }
+                enterTradeIfStrategyIsValidated(strategy: strat)
+                manageActiveTrade(strategy: strat)
+                await MainActor.run { self.strategy = strat }
             }
         } catch {
             print("Market data stream error: \(error)")
         }
-    }
-    
-    private func enterTrade() {
-        
     }
     
     public func saveCandles(fileProvider: CandleFileProvider) {
@@ -195,21 +177,38 @@ public class Watcher: Identifiable {
         strategyType.init(candles: bars)
     }
     
-    private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) -> (any Strategy)? {
-        guard let strategy, strategy.patternIdentified, let entryBar = strategy.candles.last else { return strategy }
-        let units = strategy.evaluateEntry(equity: 1000000)
-        guard units > 0 else { return strategy }
+    private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) {
+        guard
+            let account = market?.account,
+            let strategy, strategy.patternIdentified,
+            let entryBar = strategy.candles.last
+        else { return }
         
-        let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
-        self.activeTrade = entryBar
+        // TODO: Save snapshot
         
-        return strategy
+        let units = strategy.unitCount(equity: account.buyingPower)
+        guard units > 0 else { return }
+        
+        guard let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) else { return }
+        
+        evaluateMarketCoonditions(trade: Trade(
+            entryBar: entryBar,
+            price: entryBar.priceClose,
+            trailStopPrice: initialStopLoss
+        ))
+    }
+    
+    private func evaluateMarketCoonditions(trade: Trade) {
+        // TODO: 1. Check for market alerts
+        // TODO: 2. Check for market open hours and time
+        self.activeTrade = trade
     }
     
     private func manageActiveTrade(strategy: (any Strategy)) {
         guard let activeTrade else { return }
-        guard strategy.shouldExit(entryBar: activeTrade) else { return }
-        print("❌ Exiting trade at \(activeTrade.priceClose)")
+        guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
+        // TODO: 1. Sell/Buy positions
+        print("❌ Exiting trade at \(activeTrade)")
     }
 }
 

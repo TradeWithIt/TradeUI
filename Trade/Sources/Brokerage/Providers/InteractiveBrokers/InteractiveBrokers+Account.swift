@@ -91,41 +91,106 @@ public extension InteractiveBrokers {
     }
 
     // MARK: - Update Positions
-    func updatePositions(_ position: IBPosition) {
-        guard var account = accounts[position.accountName] else { return }
-        
-        let contract = position.contract
-        let quantity = position.position
-        let avgCost = position.avgCost
-        
-        // Compute Market Value (Assumption: Market price is retrieved externally)
-        let marketPrice = 0.0
-        let marketValue = quantity * marketPrice
-        
-        // Compute Unrealized PNL
-        let unrealizedPNL = (marketPrice - avgCost) * quantity
-        
-        let newPosition = Position(
-            type: position.contract.type,
-            symbol: position.contract.symbol,
-            exchangeId: position.contract.exchangeId,
-            currency: position.contract.currency,
-            quantity: quantity,
-            marketValue: marketValue,
-            averageCost: avgCost,
-            realizedPNL: 0.0, // Realized PNL is handled in order executions
-            unrealizedPNL: unrealizedPNL
-        )
-        
-        // Update or Add Position
-        if let index = account.positions.firstIndex(where: { $0.label == contract.label }) {
-            account.positions[index] = newPosition
-        } else {
-            account.positions.append(newPosition)
+    
+    // MARK: - Update Portfolio Value
+    func updatePortfolio(_ value: IBPortfolioValue) {
+        guard let contractID = value.contract.id else { return }
+        let accountName = value.accountName
+
+        // Check if the position already exists
+        if let index = accounts[accountName]?.positions.firstIndex(where: { $0.contractID == contractID }) {
+            if value.position == 0 {
+                accounts[accountName]?.positions.remove(at: index)
+            } else {
+                accounts[accountName]?.positions[index].quantity = value.position
+                accounts[accountName]?.positions[index].marketValue = value.marketValue
+                accounts[accountName]?.positions[index].averageCost = value.averageCost
+                accounts[accountName]?.positions[index].unrealizedPNL = value.unrealizedPNL
+                accounts[accountName]?.positions[index].realizedPNL = value.realizedPNL
+            }
+        } else if value.position > 0 {
+            // Create a new position if not present
+            let newPosition = Position(
+                type: value.contract.securitiesType.rawValue,
+                symbol: value.contract.symbol,
+                exchangeId: value.contract.exchange?.rawValue ?? "",
+                currency: value.contract.currency,
+                contractID: contractID,
+                quantity: value.position,
+                marketValue: value.marketValue,
+                averageCost: value.averageCost,
+                realizedPNL: value.realizedPNL,
+                unrealizedPNL: value.unrealizedPNL
+            )
+            accounts[accountName]?.positions.append(newPosition)
+        }
+
+        print("💰 Portfolio value updated: \(value.contract.symbol) - Market Value: \(value.marketValue), Unrealized PNL: \(value.unrealizedPNL), Realized PNL: \(value.realizedPNL)")
+    }
+    
+    func updatePositions(_ positionPNL: IBPositionPNL) {
+        guard let accountName = positionPNL.account else {
+            print("⚠️ Account not found for position update")
+            return
         }
         
-        accounts[position.accountName] = account
-        print("📊 Position updated: \(newPosition)")
+        guard let contractID = positionPNL.contractID else {
+            print("⚠️ Missing contract ID for position update")
+            return
+        }
+
+        // Find the existing position
+        guard let index = accounts[accountName]?.positions.firstIndex(where: { $0.contractID == contractID }) else {
+            print("⚠️ Position not found for contract ID: \(contractID)")
+            return
+        }
+
+        if positionPNL.position == 0 {
+            accounts[accountName]?.positions.remove(at: index)
+        } else {
+            accounts[accountName]?.positions[index].quantity = positionPNL.position
+            accounts[accountName]?.positions[index].marketValue = positionPNL.value
+            accounts[accountName]?.positions[index].unrealizedPNL = positionPNL.unrealized
+            accounts[accountName]?.positions[index].realizedPNL = positionPNL.realized
+        }
+        print("💵 PositionP&L updated: \(positionPNL)")
+    }
+
+    
+    func updatePositions(_ position: IBPosition) {
+        if let index = accounts[position.accountName]?.positions.firstIndex(where: { $0.contractID == position.contract.id }) {
+            if position.position == 0 {
+                accounts[position.accountName]?.positions.remove(at: index)
+            } else {
+                accounts[position.accountName]?.positions[index].quantity = position.position
+                accounts[position.accountName]?.positions[index].averageCost = position.avgCost
+            }
+        } else if position.position > 0 {
+            let newPosition = Position(
+                type: position.contract.type,
+                symbol: position.contract.symbol,
+                exchangeId: position.contract.exchangeId,
+                currency: position.contract.currency,
+                contractID: position.contract.id ?? 0,
+                quantity: position.position,
+                averageCost: position.avgCost
+            )
+            accounts[position.accountName]?.positions.append(newPosition)
+        }
+        
+        if let contrectId = position.contract.id {
+            do {
+                try client.subscribePositionPNL(
+                    client.nextRequestID,
+                    accountName: position.accountName,
+                    contractID: contrectId,
+                    modelCode: []
+                )
+            } catch {
+                print("failed to subscribe position pnl", error)
+            }
+        }
+        print("📊 Position updated: \(position)")
     }
     
     func updateAccountOrders(event: OrderEvent) {

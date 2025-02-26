@@ -10,6 +10,7 @@ public class MarketDataFileProvider: MarketData {
     
     public private(set) var snapshotsDirectory: URL?
     private var activeSubscriptions: [MarketDataFile] = []
+    public var account: Account? = nil
     
     required public init() {
         let fileManager = FileManager.default

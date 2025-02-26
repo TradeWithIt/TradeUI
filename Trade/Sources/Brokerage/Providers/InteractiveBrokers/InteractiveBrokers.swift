@@ -21,11 +21,30 @@ public class InteractiveBrokers: Market {
 //    private let client = IBClient.live(id: 0, type: .gateway)
 //    let client = IBClient.paper(id: 0, type: .gateway)
     let client = IBClient.paper(id: 0, type: .workstation)
-    var subscriptions: [AnyCancellable] = []
-    var accounts: [String: Account] = [:]
+    private let queue = DispatchQueue(label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
+    private var _subscriptions: [AnyCancellable] = []
+    private var _accounts: [String: Account] = [:]
+    
+    public var subscriptions: [AnyCancellable] {
+        get {
+            queue.sync { _subscriptions }
+        }
+        set {
+            queue.async(flags: .barrier) { self._subscriptions = newValue }
+        }
+    }
+    
+    public var accounts: [String: Account] {
+        get {
+            queue.sync { _accounts }
+        }
+        set {
+            queue.async(flags: .barrier) { self._accounts = newValue }
+        }
+    }
     
     public var account: Account? {
-        accounts.first?.value
+        queue.sync { _accounts.first?.value }
     }
     
     /// Return next valid request identifier you should use to make request or subscription
@@ -68,6 +87,10 @@ public class InteractiveBrokers: Market {
                 self.updateAccountData(event: event)
             case let event as IBPosition:
                 self.updatePositions(event)
+            case let event as IBPositionPNL:
+                self.updatePositions(event)
+            case let event as IBPortfolioValue:
+                self.updatePortfolio(event)
             case let event as OrderEvent:
                 self.updateAccountOrders(event: event)
             default:

@@ -7,7 +7,6 @@ struct OrderView: View {
     @Environment(TradeManager.self) private var trades
     @State private var contractNumber: Int32 = 1
     @State private var stopLoss: Int = 10
-    @State private var whichList = 0
     let account: Account?
     let watcher: Watcher?
     
@@ -21,7 +20,6 @@ struct OrderView: View {
     
     var body: some View {
         VStack(alignment: .leading) {
-            header
             list
             Divider()
             order
@@ -29,50 +27,38 @@ struct OrderView: View {
         .padding()
     }
     
-    var header: some View {
-        Picker("", selection: $whichList) {
-            Text("Orders").tag(0)
-            Text("Positions").tag(1)
-        }
-        .pickerStyle(.segmented)
-    }
-    
     @ViewBuilder
     var list: some View {
-        switch whichList {
-        case 0:
-            orderList
-        case 1:
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Positions").font(.headline)
             positionList
-        default:
-            EmptyView()
+            Text("Orders").font(.headline)
+            orderList
         }
     }
     
     var orderList: some View {
         List(orders, id: \.orderID) { order in
-            HStack {
-                HStack(alignment: .top, spacing: 4) {
-                    Text("\(order.symbol)")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Text(order.orderAction.rawValue)
-                        .fontWeight(.bold)
-                        .foregroundColor(order.orderAction == .buy ? .green : .red)
-                    Text("\(order.filledCount, specifier: "%.0f")/\(order.totalCount, specifier: "%.0f") @ \(order.limitPrice ?? order.stopPrice ?? 0, specifier: "%.2f")")
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(order.orderStatus)")
-                        .foregroundColor(.secondary)
-                    Spacer(minLength: 0)
-                    Button("Cancel") {
-                        do {
-                            try trades.market.cancelOrder(orderId: order.orderID)
-                        } catch {
-                            print(error)
-                        }
-                        
+            HStack(alignment: .top, spacing: 4) {
+                Text("\(order.symbol)")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text(order.orderAction.rawValue)
+                    .fontWeight(.bold)
+                    .foregroundColor(order.orderAction == .buy ? .green : .red)
+                Text("\(order.filledCount, specifier: "%.0f")/\(order.totalCount, specifier: "%.0f") @ \(order.limitPrice ?? order.stopPrice ?? 0, specifier: "%.2f")")
+                    .foregroundColor(.secondary)
+                
+                Text("\(order.orderStatus)")
+                    .foregroundColor(.secondary)
+                Spacer(minLength: 0)
+                Button("Cancel") {
+                    do {
+                        try trades.market.cancelOrder(orderId: order.orderID)
+                    } catch {
+                        print(error)
                     }
+                    
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,6 +75,26 @@ struct OrderView: View {
         List(positions, id: \.label) { position in
             HStack {
                 Text(position.symbol)
+                    .font(.headline)
+                
+                Text("Exchange: \(position.exchangeId) | Currency: \(position.currency)")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                
+                Text("Quantity: \(position.quantity, specifier: "%.2f")")
+                    .font(.body)
+                
+                Text("Market Value: \(position.marketValue, specifier: "%.2f")")
+                    .font(.body)
+                
+                HStack {
+                    Text("Unrealized PNL: \(position.unrealizedPNL, specifier: "%.2f")")
+                        .foregroundColor(position.unrealizedPNL >= 0 ? .green : .red)
+                    
+                    Text("Realized PNL: \(position.realizedPNL, specifier: "%.2f")")
+                        .foregroundColor(position.realizedPNL >= 0 ? .green : .red)
+                }
+                .font(.footnote)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .listRowSeparator(.hidden)

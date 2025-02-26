@@ -5,11 +5,12 @@ public struct Position {
     public let symbol: String
     public let exchangeId: String
     public let currency: String
-    public let quantity: Double
-    public let marketValue: Double
-    public let averageCost: Double
-    public let realizedPNL: Double
-    public let unrealizedPNL: Double
+    public var contractID: Int
+    public var quantity: Double
+    public var marketValue: Double = 0
+    public var averageCost: Double = 0
+    public var realizedPNL: Double = 0
+    public var unrealizedPNL: Double = 0
 }
 
 public extension Position {

@@ -11,6 +11,7 @@ public protocol MarketData {
     init()
     /// Connect Service
     func connect() throws
+    var account: Account? { get }
     /// Requests price history with continues real time updates for asset.
     /// - Parameters:
     ///   - product: Asset symbol product information
