@@ -1,6 +1,7 @@
 import Foundation
 import OrderedCollections
 import Brokerage
+import Persistence
 import TradingStrategy
 import TradeWithIt
 import SwiftUI
@@ -34,7 +35,11 @@ public class Watcher: Identifiable {
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
     private var marketOrder: MarketOrder?
-    private var tradingHours: [TradingHour] = []
+    public private(set) var tradingHours: [TradingHour] = [] {
+        didSet {
+            print("🕖", contract.symbol, self.tradingHours.isMarketOpen())
+        }
+    }
     
     deinit {
         marketOrder = nil
@@ -64,13 +69,6 @@ public class Watcher: Identifiable {
     private func setupMarketQuoteData(market: MarketData) async {
         do {
             for await newQuote in try market.quotePublisher(contract: contract).values {
-                guard
-                    newQuote.contract.symbol == contract.symbol,
-                    newQuote.contract.exchangeId == contract.exchangeId,
-                    newQuote.contract.currency == contract.currency,
-                    newQuote.contract.type == contract.type
-                else { continue }
-                
                 await MainActor.run {
                     if var existingQuote = self.quote {
                         switch newQuote.type {
@@ -128,6 +126,7 @@ public class Watcher: Identifiable {
                 
                 let bars = updateBars(candlesData.bars)
                 let strat = updateStrategy(bars: bars)
+                
                 enterTradeIfStrategyIsValidated(strategy: strat)
                 manageActiveTrade(strategy: strat)
                 await MainActor.run { self.strategy = strat }
@@ -189,8 +188,9 @@ public class Watcher: Identifiable {
         // 5 sec before bar closes
         guard Date().timeIntervalSince1970 >= (entryBar.timeClose - 5) else { return }
         
-        // TODO: Save snapshot
-        let units = strategy.unitCount(equity: account.buyingPower)
+        saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
+        
+        let units = strategy.unitCount(equity: account.buyingPower, feePerUnit: 50)
         guard units > 0 else { return }
         
         guard let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) else { return }
@@ -202,13 +202,35 @@ public class Watcher: Identifiable {
         ))
     }
     
+    private func saveTradeRecordEntrySnapshot(entryBar: any Klines, buyingPower: Double) {
+        print("💿 Saving trade record entry snapshot...")
+        Task {
+            let trade = TradeRecord(
+                id: UUID(),
+                symbol: contract.symbol,
+                strategy: String(describing: strategyType),
+                entryPrice: entryBar.priceClose,
+                buyingPowerOnEntry: buyingPower,
+                entryTime: Date(),
+                decision: entryBar.isLong ? "Long" : "Short",
+                entrySnapshot: strategy.candles.map { Candle(from: $0) },
+                exitSnapshot: nil
+            )
+            
+            PersistenceManager.shared.saveTrade(trade)
+        }
+    }
+    
     private func evaluateMarketCoonditions(trade: Trade) {
         // TODO: 1. Check for market alerts
+        
+        // Is market open during liquid hours
         let marketOpen = tradingHours.isMarketOpen()
         guard
             marketOpen.isOpen,
-            let timeUntilClose = marketOpen.timeUntilClose,
-            timeUntilClose > (interval * 20)
+            let timeUntilClose = marketOpen.timeUntilChange,
+            // 30 min before market close
+            timeUntilClose > (1_800 * 6)
         else { return }
         self.activeTrade = trade
     }
@@ -226,6 +248,15 @@ public class Watcher: Identifiable {
             )
         } catch {
             print("Something went wrong while exiting trade: \(error)")
+        }
+        
+        Task {
+            PersistenceManager.shared.updateTradeExit(
+                symbol: contract.symbol,
+                exitPrice: activeTrade.entryBar.priceClose,
+                buyingPower: account.buyingPower,
+                exitSnapshot: strategy.candles.map { Candle(from: $0) }
+            )
         }
         print("❌ Exiting trade at \(activeTrade)")
     }
@@ -248,5 +279,19 @@ public extension TimeInterval {
             formatter.allowedUnits = [.second]
         }
         return formatter.string(from: self) ?? "N/A"
+    }
+}
+
+// Persistance Candle
+extension Candle {
+    init (from data: any Klines) {
+        self.init(
+            timeOpen: data.timeOpen,
+            interval: data.interval,
+            priceOpen: data.priceOpen,
+            priceHigh: data.priceHigh,
+            priceLow: data.priceLow,
+            priceClose: data.priceClose
+        )
     }
 }

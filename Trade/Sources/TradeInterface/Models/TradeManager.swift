@@ -1,6 +1,7 @@
 import Foundation
 import Runtime
 import Brokerage
+import Persistence
 import NIOConcurrencyHelpers
 import Combine
 
@@ -9,6 +10,7 @@ import Combine
     private var cancellable: AnyCancellable?
     
     public let market: Market
+    public let persistance: Persistence
     public let fileProvider: MarketDataFileProvider
     public private(set) var watchers: [String: Watcher] = [:]
     var selectedWatcher: String?
@@ -24,9 +26,11 @@ import Combine
     
     public init(
         market: Market = InteractiveBrokers(),
+        persistance: Persistence = PersistenceManager.shared,
         fileProvider: MarketDataFileProvider = MarketDataFileProvider()
     ) {
         self.market = market
+        self.persistance = persistance
         self.fileProvider = fileProvider
     }
     

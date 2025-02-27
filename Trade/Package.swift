@@ -15,15 +15,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/shial4/SwiftUIComponents.git", branch: "main"),
-//        .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
-        .package(name: "IBKit", path: "/Users/szymonlorenz/Development/Swift/IB/IBKit"),
+        .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
         .package(url: "https://github.com/TradeWithIt/ForexFactory", branch: "main"),
+        .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.3.0")),
         
         // MARK: Trading Strategy
         .package(url: "https://github.com/TradeWithIt/Strategy.git", branch: "master"),
-//            .package(name: "Strategy", path: "/Users/szymonlorenz/Development/Swift/Strategy"),
         .package(url: "https://\(gitHubToken()):x-oauth-basic@github.com/shial4/TradeWithIt.git", branch: "master"),
-//        .package(name: "TradeWithIt", path: "/Users/szymonlorenz/Development/Swift/TradeWithIt"),
         
         // MARK: Tools
         .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0"))
@@ -39,9 +37,16 @@ let package = Package(
             name: "Runtime",
             dependencies: [
                 .target(name: "Brokerage"),
+                .target(name: "Persistence"),
                 
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "TradeWithIt", package: "TradeWithIt"),
+            ]
+        ),
+        .target(
+            name: "Persistence",
+            dependencies: [
+                .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
         
@@ -50,6 +55,7 @@ let package = Package(
             dependencies: [
                 .target(name: "Runtime"),
                 .target(name: "Brokerage"),
+                .target(name: "Persistence"),
                 
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "SwiftUIComponents", package: "SwiftUIComponents"),

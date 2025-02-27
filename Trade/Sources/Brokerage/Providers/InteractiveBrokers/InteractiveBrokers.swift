@@ -181,6 +181,13 @@ public class InteractiveBrokers: Market {
         } ?? []
     }
     
+    public func unitFee(_ product: any Contract) async throws -> [TradingHour] {
+        let details = try await contractDetails(product)
+        return details.liquidHours?.map {
+            TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
+        } ?? []
+    }
+    
     private func contractDetails(_ product: any Contract) async throws -> IBContractDetails {
         let requestID = client.nextRequestID
         let request = IBContractDetailsRequest(requestID: requestID, contract: self.contract(product))

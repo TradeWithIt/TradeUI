@@ -108,7 +108,7 @@ public extension InteractiveBrokers {
                 accounts[accountName]?.positions[index].unrealizedPNL = value.unrealizedPNL
                 accounts[accountName]?.positions[index].realizedPNL = value.realizedPNL
             }
-        } else if value.position > 0 {
+        } else {
             // Create a new position if not present
             let newPosition = Position(
                 type: value.contract.securitiesType.rawValue,
@@ -165,7 +165,7 @@ public extension InteractiveBrokers {
                 accounts[position.accountName]?.positions[index].quantity = position.position
                 accounts[position.accountName]?.positions[index].averageCost = position.avgCost
             }
-        } else if position.position > 0 {
+        } else {
             let newPosition = Position(
                 type: position.contract.type,
                 symbol: position.contract.localSymbol ?? position.contract.symbol,
@@ -210,7 +210,6 @@ public extension InteractiveBrokers {
         case let event as IBOrderCompletion:
             guard let accountId = event.order.account else { return }
             self.accounts[accountId]?.orders[event.order.orderID] = nil
-            
         case let event as IBOrderStatus:
             switch event.status {
             case .cancelled:
@@ -223,7 +222,7 @@ public extension InteractiveBrokers {
                 break
             }
         default:
-            break
+            print("🙌🏻 Order: ", event.self)
         }
     }
 }

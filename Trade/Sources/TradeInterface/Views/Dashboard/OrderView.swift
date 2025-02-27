@@ -88,10 +88,10 @@ struct OrderView: View {
                     .font(.body)
                 
                 HStack {
-                    Text("Unrealized PNL: \(position.unrealizedPNL, specifier: "%.2f")")
+                    Text("U-PNL: \(position.unrealizedPNL, specifier: "%.2f")")
                         .foregroundColor(position.unrealizedPNL >= 0 ? .green : .red)
                     
-                    Text("Realized PNL: \(position.realizedPNL, specifier: "%.2f")")
+                    Text("R-PNL: \(position.realizedPNL, specifier: "%.2f")")
                         .foregroundColor(position.realizedPNL >= 0 ? .green : .red)
                 }
                 .font(.footnote)

@@ -4,6 +4,8 @@ import Brokerage
 import TradingStrategy
 
 public struct WatcherView: View {
+    @State var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let watcher: Watcher?
 
     public init(watcher: Watcher?) {
@@ -26,6 +28,14 @@ public struct WatcherView: View {
     private var volume: String {
         formatPrice(watcher?.quote?.volume)
     }
+    
+    private func formattedTimeInterval(_ interval: TimeInterval?) -> String {
+        guard let interval, interval > 0 else { return "N/A" }
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
 
     public var body: some View {
         if let watcher {
@@ -34,17 +44,37 @@ public struct WatcherView: View {
                 interval: watcher.interval,
                 quoteView: {
                     HStack {
-                        tickView(title: "LAST", value: lastPrice)
-                        tickView(title: "BID", value: bidPrice)
-                        tickView(title: "ASK", value: askPrice)
-                        tickView(title: "Volume", value: volume)
-                        Text("\(watcher.contract.symbol)")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                        Spacer()
+                        HStack {
+                            tickView(title: "LAST", value: lastPrice)
+                            tickView(title: "BID", value: bidPrice)
+                            tickView(title: "ASK", value: askPrice)
+                            tickView(title: "Volume", value: volume)
+                        }
+                        Spacer()
+                        HStack {
+                            Text(formattedTimeInterval(isMarketOpen.timeUntilChange))
+                                .font(.subheadline)
+                                .foregroundColor(isMarketOpen.isOpen ? .green : .red)
+                            Text("\(watcher.contract.symbol)")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                        }
+                        Spacer()
                     }
                 }
             )
             .id(watcher.id)
+            .onReceive(timer) { _ in
+                var change = isMarketOpen
+                if let time = change.timeUntilChange {
+                    change.timeUntilChange = max(0, time - 1)
+                }
+                isMarketOpen = change
+            }
+            .onChange(of: watcher.tradingHours) {
+                isMarketOpen = watcher.tradingHours.isMarketOpen()
+            }
         } else {
             ChartView(interval: 60, data: [])
         }

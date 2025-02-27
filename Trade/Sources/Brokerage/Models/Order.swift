@@ -9,7 +9,7 @@ public protocol Order {
     var orderID: Int { get }
     var symbol: String { get }
     var orderAction: OrderAction { get }
-    var totalQuantity: Double { get }
+    var totalQuantity: Double { get set }
     var filledCount: Double { get set }
     var totalCount: Double { get }
     var limitPrice: Double? { get }

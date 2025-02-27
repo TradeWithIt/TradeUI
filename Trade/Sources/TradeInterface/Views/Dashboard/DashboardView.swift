@@ -12,6 +12,7 @@ struct DashboardView: View {
     
     @State private var viewModel = ViewModel()
     @State private var account: Account?
+    @State private var showTradeList = false
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -19,6 +20,17 @@ struct DashboardView: View {
             sidebar: { sidebar },
             detail: { detail }
         )
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showTradeList.toggle() }) {
+                    Label("Trade History", systemImage: "list.bullet")
+                }
+            }
+        }
+        .sheet(isPresented: $showTradeList) {
+            TradeListView()
+                .frame(minWidth: 400, minHeight: 300)
+        }
         .searchSuggestions {
             ForEach(viewModel.suggestedSearches, id: \.hashValue) { suggestion in
                 suggestionView(
@@ -36,9 +48,7 @@ struct DashboardView: View {
             suggestionView(contract: Instrument.APPL, interval: 300)
             suggestionView(contract: Instrument.BTC, interval: 300)
             suggestionView(contract: Instrument.ETH, interval: 300)
-            suggestionView(contract: Instrument.ESM4, interval: 300)
-            suggestionView(contract: Instrument.M2KM4, interval: 300)
-            suggestionView(contract: Instrument.RTYM4, interval: 300)
+            suggestionView(contract: Instrument.MESM4, interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
