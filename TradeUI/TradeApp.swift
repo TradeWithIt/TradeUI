@@ -37,18 +37,21 @@ struct TradeApp: App {
             if let watcherId = watcherId, let watcher = trades.watchers[watcherId] {
                 WatcherView(watcher: watcher)
                     .navigationTitle("Watcher: \(watcher.displayName)")
+                    .environment(trades)
             }
         }
         
         WindowGroup("Snapshot Preview", for: FileSnapshotsView.ViewModel.SnapshotPreview.self) { $snapshot in
             if let node = snapshot?.file {
                 SnapshotView(node: node, fileProvider: trades.fileProvider)
+                    .environment(trades)
             }
         }
         
         WindowGroup("Snapshot Playback", for: FileSnapshotsView.ViewModel.SnapshotPlayback.self) { $snapshot in
             if let node = snapshot?.file {
                 SnapshotPlaybackView(node: node, fileProvider: trades.fileProvider)
+                    .environment(trades)
             }
         }
         

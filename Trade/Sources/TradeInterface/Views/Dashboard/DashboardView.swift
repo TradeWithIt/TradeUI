@@ -44,11 +44,14 @@ struct DashboardView: View {
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.CBA, interval: 300)
-            suggestionView(contract: Instrument.APPL, interval: 300)
-            suggestionView(contract: Instrument.BTC, interval: 300)
-            suggestionView(contract: Instrument.ETH, interval: 300)
+//            suggestionView(contract: Instrument.CBA, interval: 300)
+//            suggestionView(contract: Instrument.APPL, interval: 300)
+//            suggestionView(contract: Instrument.BTC, interval: 300)
+//            suggestionView(contract: Instrument.ETH, interval: 300)
             suggestionView(contract: Instrument.MESM4, interval: 300)
+            suggestionView(contract: Instrument.M2KM4, interval: 300)
+            suggestionView(contract: Instrument.RTYM4, interval: 300)
+            suggestionView(contract: Instrument.ESM4, interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
@@ -114,7 +117,7 @@ struct DashboardView: View {
                 activeAssetsButtons(watcher: watcher)
             }
             .contextMenu {
-                Button("Open Note in New Window") {
+                Button("Open in New Window") {
                     openWindow(value: watcher.id)
                 }
             }

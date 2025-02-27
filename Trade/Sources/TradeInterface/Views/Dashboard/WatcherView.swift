@@ -4,6 +4,7 @@ import Brokerage
 import TradingStrategy
 
 public struct WatcherView: View {
+    @Environment(TradeManager.self) private var trades
     @State var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let watcher: Watcher?
@@ -69,10 +70,13 @@ public struct WatcherView: View {
                 var change = isMarketOpen
                 if let time = change.timeUntilChange {
                     change.timeUntilChange = max(0, time - 1)
+                    if change.timeUntilChange == 0 {
+                        watcher.fetchTredingHours(marketData: trades.market)
+                    }
                 }
                 isMarketOpen = change
             }
-            .onChange(of: watcher.tradingHours) {
+            .onChange(of: watcher.tradingHours, initial: true) {
                 isMarketOpen = watcher.tradingHours.isMarketOpen()
             }
         } else {

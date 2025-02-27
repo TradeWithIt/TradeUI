@@ -15,8 +15,13 @@ public final class PersistenceManager: Persistence {
                 create: false
             )
                 .appendingPathComponent("Snapshots")
+            
+            if !fileManager.fileExists(atPath: directory.path) {
+                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
+            }
+            
             let dbPath = directory.appendingPathComponent("trades.sqlite").path
-
+            
             if !fileManager.fileExists(atPath: dbPath) {
                 fileManager.createFile(atPath: dbPath, contents: nil, attributes: nil)
             }

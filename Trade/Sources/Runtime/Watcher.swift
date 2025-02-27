@@ -63,7 +63,21 @@ public class Watcher: Identifiable {
         
         quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
         marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
-        Task { self.tradingHours = try await marketData.tradingHour(contract) }
+        fetchTredingHours(marketData: marketData)
+    }
+    
+    public func saveCandles(fileProvider: CandleFileProvider) {
+        guard !strategy.candles.isEmpty else { return }
+        snapshotData(fileProvider: fileProvider, candles: strategy.candles)
+    }
+    
+    public func fetchTredingHours(marketData: MarketData) {
+        Task {
+            let hours = try await marketData.tradingHour(contract)
+            await MainActor.run {
+                self.tradingHours = hours
+            }
+        }
     }
     
     private func setupMarketQuoteData(market: MarketData) async {
@@ -134,11 +148,6 @@ public class Watcher: Identifiable {
         } catch {
             print("Market data stream error: \(error)")
         }
-    }
-    
-    public func saveCandles(fileProvider: CandleFileProvider) {
-        guard !strategy.candles.isEmpty else { return }
-        snapshotData(fileProvider: fileProvider, candles: strategy.candles)
     }
     
     private func snapshotData(fileProvider: CandleFileProvider, candles: [any Klines]) {
