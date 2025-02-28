@@ -21,7 +21,10 @@ public struct SnapshotView: View {
     public var body: some View {
         Group {
             if let strategy {
-                StrategyChart(strategy: strategy, interval: interval ?? 60)
+                VStack {
+                    StrategyCheckList(strategy: strategy)
+                    StrategyChart(strategy: strategy, interval: interval ?? 60)
+                }
             } else {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle())
