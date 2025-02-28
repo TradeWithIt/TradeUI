@@ -76,8 +76,10 @@ public struct StrategyQuoteView: View {
             var change = isMarketOpen
             if let time = change.timeUntilChange {
                 change.timeUntilChange = time - 1
-                if change.timeUntilChange == 0 {
+                if Int(time) == 0 {
                     watcher.fetchTredingHours(marketData: trades.market)
+                    isMarketOpen = watcher.tradingHours.isMarketOpen()
+                } else if Int(time) < 0 {
                     isMarketOpen = watcher.tradingHours.isMarketOpen()
                 }
             }

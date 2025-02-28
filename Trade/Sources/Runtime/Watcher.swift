@@ -193,13 +193,16 @@ public class Watcher: Identifiable {
         else { return }
         
         // 5 sec before bar closes
+        print("✅ enterTradeIfStrategyIsValidated interval: ", Date().timeIntervalSince1970 >= (entryBar.timeClose - 5))
         guard Date().timeIntervalSince1970 >= (entryBar.timeClose - 5) else { return }
         
         saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
         
         let units = strategy.unitCount(equity: account.buyingPower, feePerUnit: 50)
+        print("✅ enterTradeIfStrategyIsValidated units: ", units)
         guard units > 0 else { return }
         
+        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", strategy.adjustStopLoss(entryBar: entryBar))
         guard let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) else { return }
         
         evaluateMarketCoonditions(trade: Trade(
@@ -234,6 +237,7 @@ public class Watcher: Identifiable {
         
         // Is market open during liquid hours
         let marketOpen = tradingHours.isMarketOpen()
+        print("✅ evaluateMarketCoonditions: ", marketOpen)
         guard
             marketOpen.isOpen,
             let timeUntilClose = marketOpen.timeUntilChange,
@@ -243,6 +247,7 @@ public class Watcher: Identifiable {
         
         self.activeTrade = trade
         do {
+            print("✅✅ enter trade: ", trade)
             try marketOrder?.makeLimitWithTrailingStopOrder(
                 contract: contract,
                 action: trade.entryBar.isLong ? .buy : .sell,

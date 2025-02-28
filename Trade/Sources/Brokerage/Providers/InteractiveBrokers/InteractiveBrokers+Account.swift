@@ -124,8 +124,6 @@ public extension InteractiveBrokers {
             )
             accounts[accountName]?.positions.append(newPosition)
         }
-
-        print("💰 Portfolio value updated: \(value.contract.symbol) - Market Value: \(value.marketValue), Unrealized PNL: \(value.unrealizedPNL), Realized PNL: \(value.realizedPNL)")
     }
     
     func updatePositions(_ positionPNL: IBPositionPNL) {
