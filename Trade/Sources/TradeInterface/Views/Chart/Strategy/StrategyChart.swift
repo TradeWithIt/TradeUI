@@ -1,59 +1,19 @@
 import SwiftUI
 import TradingStrategy
 
-public extension StrategyChart where Q == EmptyView {
-    init(strategy: any Strategy, interval: TimeInterval) {
-        self.strategy = strategy
-        self.interval = interval
-        self.quoteView = EmptyView()
-    }
-}
-
-public struct StrategyChart<Q: View>: View {
+public struct StrategyChart: View {
     let strategy: any Strategy
     let interval: TimeInterval
     
-    let quoteView: Q
-    
-    public init(strategy: any Strategy, interval: TimeInterval, @ViewBuilder quoteView: @escaping () -> Q) {
+    public init(strategy: any Strategy, interval: TimeInterval) {
         self.strategy = strategy
         self.interval = interval
-        self.quoteView = quoteView()
     }
     
     public var body: some View {
-        VStack {
-            checkList
-            HStack(spacing: 0) {
-                chart(candles: strategy.candles)
-                supportChart(candles: strategy.supportBars)
-            }
-        }
-    }
-    
-    private var checkList: some View {
-        HStack {
-            ForEach(Array(strategy.patternInformation.keys.sorted()), id: \.self) { key in
-                checkItem(name: key) { strategy.patternInformation[key] ?? false }
-            }
-            Spacer()
-            quoteView
-            Spacer()
-        }
-        .padding(.horizontal)
-    }
-    
-    private func checkItem(name: String, _ condition: () -> Bool) -> some View {
-        let isFullfiled: Bool = condition()
-        return VStack(alignment: .center, spacing: 4) {
-            Text(name)
-                .lineLimit(1)
-                .foregroundColor(.white.opacity(0.4))
-                .font(.caption)
-            Text(isFullfiled ? "✔︎" : "✕")
-                .lineLimit(1)
-                .foregroundColor(isFullfiled ? .green : .red)
-                .font(.subheadline)
+        HStack(spacing: 0) {
+            chart(candles: strategy.candles)
+            supportChart(candles: strategy.supportBars)
         }
     }
 
@@ -91,6 +51,32 @@ public struct StrategyChart<Q: View>: View {
                         canvas: frame
                     )
                     .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
+                }
+                
+                // Near Short-Term Moving Average Range
+                if let shortTermMA = strategy.shortTermMA.last {
+                    let yRange = scale.y.upperBound - scale.y.lowerBound
+                    let dynamicThreshold = yRange * 0.025
+                    
+                    let upperRange = scale.y(shortTermMA + dynamicThreshold, size: frame.size)
+                    Path.pathWithPoints(
+                        points: [
+                            CGPoint(x: frame.minX, y: upperRange),
+                            CGPoint(x: frame.maxX, y: upperRange),
+                        ],
+                        canvas: frame
+                    )
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                    
+                    let lowerRange = scale.y(shortTermMA - dynamicThreshold, size: frame.size)
+                    Path.pathWithPoints(
+                        points: [
+                            CGPoint(x: frame.minX, y: lowerRange),
+                            CGPoint(x: frame.maxX, y: lowerRange),
+                        ],
+                        canvas: frame
+                    )
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
                 }
                 
                 // Phase line

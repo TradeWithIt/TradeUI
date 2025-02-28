@@ -108,7 +108,7 @@ public extension InteractiveBrokers {
                 accounts[accountName]?.positions[index].unrealizedPNL = value.unrealizedPNL
                 accounts[accountName]?.positions[index].realizedPNL = value.realizedPNL
             }
-        } else {
+        } else if value.position != 0 {
             // Create a new position if not present
             let newPosition = Position(
                 type: value.contract.securitiesType.rawValue,

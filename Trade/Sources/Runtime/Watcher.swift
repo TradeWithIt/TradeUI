@@ -6,8 +6,6 @@ import TradingStrategy
 import TradeWithIt
 import SwiftUI
 
-extension Bar: Klines {}
-
 @Observable
 public class Watcher: Identifiable {
     public private(set) var contract: any Contract
@@ -97,7 +95,7 @@ public class Watcher: Identifiable {
                         case .none:
                             break
                         }
-                        existingQuote.date = Date()  // Update timestamp
+                        existingQuote.date = Date()
                         self.quote = existingQuote
                     } else {
                         self.quote = Quote(
@@ -207,7 +205,8 @@ public class Watcher: Identifiable {
         evaluateMarketCoonditions(trade: Trade(
             entryBar: entryBar,
             price: entryBar.priceClose,
-            trailStopPrice: initialStopLoss
+            trailStopPrice: initialStopLoss,
+            units: Double(units)
         ))
     }
     
@@ -241,7 +240,19 @@ public class Watcher: Identifiable {
             // 30 min before market close
             timeUntilClose > (1_800 * 6)
         else { return }
+        
         self.activeTrade = trade
+        do {
+            try marketOrder?.makeLimitWithTrailingStopOrder(
+                contract: contract,
+                action: trade.entryBar.isLong ? .buy : .sell,
+                price: trade.price,
+                trailStopPrice: trade.trailStopPrice,
+                quantity: trade.units
+            )
+        } catch {
+            print("Something went wrong while exiting trade: \(error)")
+        }
     }
     
     private func manageActiveTrade(strategy: (any Strategy)) {
@@ -255,6 +266,7 @@ public class Watcher: Identifiable {
                 price: position.averageCost,
                 quantity: position.quantity
             )
+            self.activeTrade = nil
         } catch {
             print("Something went wrong while exiting trade: \(error)")
         }
@@ -271,7 +283,11 @@ public class Watcher: Identifiable {
     }
 }
 
-public extension TimeInterval {
+// MARK: Helpers
+
+extension Bar: Klines {}
+
+extension TimeInterval {
     func formatCandleTimeInterval() -> String {
         let formatter = DateComponentsFormatter()
         formatter.unitsStyle = .abbreviated

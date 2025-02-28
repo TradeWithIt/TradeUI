@@ -29,12 +29,12 @@ class ObservableString {
 extension DashboardView {
     @Observable class ViewModel {
         enum SidebarTab: String, CaseIterable {
-            case watchers = "Watchers"
+            case watchers = "Account"
             case localFiles = "Local Files"
 
             var icon: String {
                 switch self {
-                case .watchers: return "eye"
+                case .watchers: return "case.fill"
                 case .localFiles: return "folder"
                 }
             }

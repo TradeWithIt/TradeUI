@@ -108,7 +108,7 @@ public class InteractiveBrokers: Market {
         }
     }
     
-    private func contract(_ product: any Contract) -> IBContract {
+    func contract(_ product: any Contract) -> IBContract {
         let contract: IBContract
         if product.type == IBSecuritiesType.future.rawValue {
             contract = IBContract.future(

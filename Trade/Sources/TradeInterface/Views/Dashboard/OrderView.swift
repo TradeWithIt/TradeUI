@@ -4,11 +4,15 @@ import Runtime
 import Brokerage
 
 struct OrderView: View {
+    enum Style {
+        case portfolio, orderEntry
+    }
     @Environment(TradeManager.self) private var trades
     @State private var contractNumber: Int32 = 1
-    @State private var stopLoss: Int = 10
+    @State private var stopLoss: Int = 75
     let account: Account?
     let watcher: Watcher?
+    var show: Style = .orderEntry
     
     var orders: [Order] {
         account?.orders.values.map { $0 } ?? []
@@ -19,22 +23,27 @@ struct OrderView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading) {
+        switch show {
+        case .portfolio:
             list
-            Divider()
+        case .orderEntry:
             order
         }
-        .padding()
     }
     
     @ViewBuilder
     var list: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Positions").font(.headline)
-            positionList
-            Text("Orders").font(.headline)
-            orderList
+            if !positions.isEmpty {
+                Text("Positions").font(.headline)
+                positionList
+            }
+            if !orders.isEmpty {
+                Text("Orders").font(.headline)
+                orderList
+            }
         }
+        .padding()
     }
     
     var orderList: some View {
@@ -62,13 +71,12 @@ struct OrderView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowSeparator(.hidden)
             .listSectionSeparator(.hidden)
             .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
     }
     
     var positionList: some View {
@@ -97,27 +105,17 @@ struct OrderView: View {
                 .font(.footnote)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowSeparator(.hidden)
             .listSectionSeparator(.hidden)
             .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
     }
     
     var order: some View {
         VStack {
             HStack(alignment: .top) {
-                Button("Cancel All") {
-                    do {
-                        try trades.market.cancelAllOrders()
-                    } catch {
-                        print(error)
-                    }
-                    
-                }
-                .buttonStyle(TradingButtonStyle(backgroundColor: .gray))
                 Button("Buy Mkt") {
                     guard let watcher, let bar = watcher.strategy.candles.last else { return }
                     do {
@@ -125,7 +123,7 @@ struct OrderView: View {
                             contract: watcher.contract,
                             action: .buy,
                             price: bar.priceHigh,
-                            trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss)),
+                            trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss) / 100.0),
                             quantity: Double(contractNumber)
                         )
                     } catch {
@@ -140,7 +138,7 @@ struct OrderView: View {
                             contract: watcher.contract,
                             action: .sell,
                             price: bar.priceLow,
-                            trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss)),
+                            trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss) / 100.0),
                             quantity: Double(contractNumber)
                         )
                     } catch {
@@ -148,14 +146,29 @@ struct OrderView: View {
                     }
                 }
                 .buttonStyle(TradingButtonStyle(backgroundColor: .red))
-                HStack(alignment: .top) {
-                    Text("Contract Count")
-                    TextField("Contract Count", value: $contractNumber, formatter: NumberFormatter())
+                Spacer()
+                Button("Cancel All") {
+                    do {
+                        try trades.market.cancelAllOrders()
+                    } catch {
+                        print(error)
+                    }
+                    
                 }
+                .buttonStyle(TradingButtonStyle(backgroundColor: .gray))
+            }
+            Divider()
+            HStack(alignment: .top) {
+                Text("Contract Count")
+                Spacer()
+                TextField("Contract Count", value: $contractNumber, formatter: NumberFormatter())
+                    .frame(width: 80)
             }
             HStack(alignment: .top) {
-                Text("Stop Loss (Market -%)")
-                TextField("Stop Loss (Market -%)", value: $stopLoss, formatter: NumberFormatter())
+                Text("Stop Loss (Market %)")
+                Spacer()
+                TextField("Stop Loss (Market %)", value: $stopLoss, formatter: NumberFormatter())
+                    .frame(width: 80)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)

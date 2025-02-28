@@ -31,6 +31,7 @@ public struct SnapshotView: View {
         .frame(minWidth: 1000, minHeight: 450)
         .padding(20)
         .overlay(alignment: .topTrailing) {
+            #if !os(macOS)
             Button("Dismiss") {
                 if Bundle.main.isMacOS {
                     dismiss()
@@ -38,6 +39,7 @@ public struct SnapshotView: View {
                     presentationMode.wrappedValue.dismiss()
                 }
             }.padding()
+            #endif
         }
     }
     

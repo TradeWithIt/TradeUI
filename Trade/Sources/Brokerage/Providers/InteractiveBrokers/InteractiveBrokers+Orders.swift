@@ -100,6 +100,56 @@ extension InteractiveBrokers {
         try client.placeOrder(order.orderID, order: order)
         return publisher
     }
+    
+    @discardableResult
+    func placeIBAlgoExitOrders(
+        contract product: any Contract,
+        isLong: Bool,
+        entryPrice: Double,
+        trailStopPrice: Double,
+        takeProfitPrice: Double,
+        quantity: Double
+    ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
+        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier") }
+        let contract = self.contract(product)
+        let exitOCAGroup = UUID().uuidString
+        
+        var limitOrder = IBOrder.limit(
+            entryPrice, action: isLong ? .buy : .sell, quantity: quantity, contract: contract, account: account
+        )
+        limitOrder.orderID = nextOrderID
+        limitOrder.transmit = false
+        
+        var stopOrder = IBOrder.trailingStop(
+            stop: trailStopPrice,
+            limit: entryPrice,
+            action: isLong ? .sell : .buy,
+            quantity: quantity,
+            contract: contract,
+            account: account
+        )
+        stopOrder.parentId = limitOrder.orderID
+        stopOrder.orderID = nextOrderID
+        stopOrder.ocaGroup = exitOCAGroup
+        stopOrder.transmit = false
+        
+        var takeProfitOrder = IBOrder.limit(
+            takeProfitPrice,
+            action: isLong ? .sell : .buy,
+            quantity: quantity,
+            contract: contract,
+            account: account
+        )
+        takeProfitOrder.parentId = limitOrder.orderID
+        takeProfitOrder.orderID = nextOrderID
+        takeProfitOrder.ocaGroup = exitOCAGroup
+        takeProfitOrder.transmit = true
+        
+        return try placeOrder(limitOrder)
+            .merge(with: try placeOrder(stopOrder))
+            .merge(with: try placeOrder(takeProfitOrder))
+            .eraseToAnyPublisher()
+    }
 }
 
 public protocol OrderEvent{}

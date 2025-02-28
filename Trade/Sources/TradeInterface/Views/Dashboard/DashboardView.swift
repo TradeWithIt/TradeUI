@@ -6,9 +6,6 @@ import Runtime
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @Environment(TradeManager.self) private var trades
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
     
     @State private var viewModel = ViewModel()
     @State private var account: Account?
@@ -44,22 +41,15 @@ struct DashboardView: View {
                 )
             }
             Divider()
-//            suggestionView(contract: Instrument.CBA, interval: 300)
-//            suggestionView(contract: Instrument.APPL, interval: 300)
-//            suggestionView(contract: Instrument.BTC, interval: 300)
-//            suggestionView(contract: Instrument.ETH, interval: 300)
+            suggestionView(contract: Instrument.APPL, interval: 300)
+            suggestionView(contract: Instrument.BTC, interval: 300)
+            suggestionView(contract: Instrument.ETH, interval: 300)
             suggestionView(contract: Instrument.MESM4, interval: 300)
             suggestionView(contract: Instrument.M2KM4, interval: 300)
-            suggestionView(contract: Instrument.RTYM4, interval: 300)
-            suggestionView(contract: Instrument.ESM4, interval: 300)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
             account = trades.market.account
-        }
-        .onChange(of: trades.watchers.isEmpty) {
-            guard trades.selectedWatcher == nil else { return }
-            trades.selectedWatcher = trades.watchers.first?.value.id
         }
         .task {
             Task {
@@ -80,17 +70,23 @@ struct DashboardView: View {
     var sidebar: some View {
         VStack {
             TabView(selection: $viewModel.selectedTab) {
-                activeAssets
-                    .tag(ViewModel.SidebarTab.watchers)
-                    .tabItem { Label("Watchers", systemImage: "chart.bar.fill") }
+                VStack {
+                    if let account {
+                        AccountSummaryView(account: account)
+                    }
+                    Spacer()
+                    if let _ = trades.watcher {
+                        OrderView(account: account, watcher: trades.watcher).padding()
+                    }
+                }
+                .tag(ViewModel.SidebarTab.watchers)
+                .tabItem { Label("Account", systemImage: "chart.bar.fill") }
                 
                 FileSnapshotsView()
                     .tag(ViewModel.SidebarTab.localFiles)
                     .tabItem { Label("Local Files", systemImage: "folder.fill") }
             }
-            if let account {
-                AccountSummaryView(account: account)
-            }
+            
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .task {
@@ -103,77 +99,28 @@ struct DashboardView: View {
         }
     }
     
-    var activeAssets: some View {
-        List(Array(trades.watchers.values), id: \.id) { watcher in
-            HStack {
-                Text(watcher.displayName)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .bold(trades.selectedWatcher == watcher.id)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        trades.selectedWatcher = watcher.id
-                    }
-                Spacer(minLength: 0)
-                activeAssetsButtons(watcher: watcher)
-            }
-            .contextMenu {
-                Button("Open in New Window") {
-                    openWindow(value: watcher.id)
-                }
-            }
-        }
-    }
-    
-    func activeAssetsButtons(watcher: Watcher) -> some View {
-        HStack {
-            Button(action: {
-                watcher.saveCandles(fileProvider: trades.fileProvider)
-            }, label: {
-                Image(systemName: "arrow.down.circle")
-                    .resizable()
-            })
-            .buttonStyle(PlainButtonStyle())
-            .frame(width: 12, height: 12)
-            
-            Button(action: {
-                cancelMarketData(watcher.contract, interval: watcher.interval)
-            }, label: {
-                Image(systemName: "xmark.circle")
-                    .resizable()
-            })
-            .buttonStyle(PlainButtonStyle())
-            .frame(width: 12, height: 12)
-        }
-    }
-    
     var detail: some View {
-        VStack {
+        VStack(alignment: .leading) {
+            Text("Watchers").font(.title2).padding()
+            Divider()
             charts
-            controlPanel
+            
+            Text("Portfolio").font(.title2).padding()
+            Divider()
+            OrderView(account: account, watcher: trades.watcher, show: .portfolio)
+            
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
     
     var charts: some View {
-        WatcherView(watcher: trades.watcher)
-    }
-    
-    var controlPanel: some View {
-        OrderView(account: account, watcher: trades.watcher)
-    }
-    
-    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) {
-        let asset = Asset(
-            instrument: Instrument(
-                type: contract.type,
-                symbol: contract.symbol,
-                exchangeId: contract.exchangeId,
-                currency: contract.currency
-            ),
-            interval: interval
-        )
-        watchedAssets.remove(asset)
-        trades.cancelMarketData(asset)
+        VStack {
+            ForEach(Array(trades.watchers.values), id: \.id) { watcher in
+                WatcherView(watcher: watcher, showChart: false, showActionButtons: true)
+                Divider()
+            }
+        }
+        .padding([.horizontal, .bottom])
     }
     
     private func marketData(contract: any Contract, interval: TimeInterval) {

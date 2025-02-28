@@ -29,12 +29,14 @@ public struct SnapshotPlaybackView: View {
         .frame(minWidth: 800, minHeight: 450)
         .padding(20)
         .overlay(alignment: .topTrailing) {
+            #if !os(macOS)
             Button("Dismiss") {
                 if let watcher {
                     fileProvider.unsubscribeMarketData(contract: watcher.contract, interval: watcher.interval)
                 }
                 presentationMode.wrappedValue.dismiss()
             }.padding()
+            #endif
         }
     }
     

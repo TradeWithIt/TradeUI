@@ -41,8 +41,6 @@ struct AccountSummaryView: View {
             }
         }
         .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill(.background).shadow(radius: 2))
-        .padding(.horizontal)
     }
 
     // Helper function to format account metrics
