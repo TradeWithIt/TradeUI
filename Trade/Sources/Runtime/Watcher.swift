@@ -32,6 +32,8 @@ public class Watcher: Identifiable {
     
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
+    private var tradeTask: Task<Void, Never>?
+    private var lastScheduledEntryBarTime: TimeInterval?
     private var marketOrder: MarketOrder?
     public private(set) var tradingHours: [TradingHour] = [] {
         didSet {
@@ -114,11 +116,27 @@ public class Watcher: Identifiable {
         }
     }
     
+    private func scheduleTradeTask() async {
+        await MainActor.run {
+            tradeTask?.cancel()
+            tradeTask = Task {
+                do {
+                    guard !Task.isCancelled else { return }
+                    try await Task.sleep(for: .seconds(interval - 5.0))
+                    guard !Task.isCancelled else { return }
+                    await enterTradeIfStrategyIsValidated()
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    print("🔴 Failed to schedule trade task: \(error)")
+                }
+            }
+        }
+    }
+    
     private func setupMarketData(marketData: MarketData, fileProvider: CandleFileProvider) async {
         do {
             var updatedUserInfo = userInfo
             updatedUserInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount) * 2.0
-            var lastEmissionTime: Date? = nil
             
             for await candlesData in try marketData.marketData(
                 contract: contract,
@@ -126,22 +144,16 @@ public class Watcher: Identifiable {
                 userInfo: updatedUserInfo
             ).values {
                 if Task.isCancelled { break }
+                let isSimulation = marketData is MarketDataFileProvider
                 
-                // Throttle if needed (200ms unless marketData is a file provider)
-                if !(marketData is MarketDataFileProvider) {
-                    let now = Date()
-                    if let last = lastEmissionTime, now.timeIntervalSince(last) < 0.2 {
-                        continue
-                    }
-                    lastEmissionTime = now
-                }
-                
-                let bars = updateBars(candlesData.bars)
+                let bars = await updateBars(candlesData.bars, isSimulation: isSimulation)
                 let strat = updateStrategy(bars: bars)
                 
-                enterTradeIfStrategyIsValidated(strategy: strat)
-                manageActiveTrade(strategy: strat)
                 await MainActor.run { self.strategy = strat }
+                // Simulation at the end of update loop perform trade
+                if isSimulation { await enterTradeIfStrategyIsValidated() }
+                // Manage active positions (in trade)
+                await manageActiveTrade()
             }
         } catch {
             print("Market data stream error: \(error)")
@@ -162,7 +174,7 @@ public class Watcher: Identifiable {
         }
     }
     
-    private func updateBars(_ bars: [Bar]) -> [Bar] {
+    private func updateBars(_ bars: [Bar], isSimulation: Bool) async -> [Bar] {
         var currentCandles = self.candles
         if currentCandles.isEmpty {
             currentCandles = OrderedSet(bars)
@@ -170,7 +182,8 @@ public class Watcher: Identifiable {
             for bar in bars {
                 if let index = currentCandles.lastIndex(of: bar) {
                     currentCandles.update(bar, at: index)
-                } else if let lastBar = currentCandles.last, bar.timeOpen > lastBar.timeOpen {
+                } else if let lastBar = currentCandles.last, bar.timeOpen >= (lastBar.timeOpen + interval) {
+                    if !isSimulation { await scheduleTradeTask() }
                     currentCandles.updateOrAppend(bar)
                 }
             }
@@ -185,16 +198,17 @@ public class Watcher: Identifiable {
         strategyType.init(candles: bars)
     }
     
-    private func enterTradeIfStrategyIsValidated(strategy: (any Strategy)?) {
+    private func enterTradeIfStrategyIsValidated() async {
+        guard !Task.isCancelled else { return }
+        let strategy = await MainActor.run { return self.strategy }
         guard
+            strategy.patternIdentified,
             let account = marketOrder?.account,
-            let strategy, strategy.patternIdentified,
             let entryBar = strategy.candles.last
         else { return }
         
         // 5 sec before bar closes
-        print("✅ enterTradeIfStrategyIsValidated interval: ", Date().timeIntervalSince1970 >= (entryBar.timeClose - 5))
-        guard Date().timeIntervalSince1970 >= (entryBar.timeClose - 5) else { return }
+        print("✅ enterTradeIfStrategyIsValidated interval: ", Date().timeIntervalSince1970, strategy.candles.last as Any)
         
         saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
         
@@ -202,10 +216,10 @@ public class Watcher: Identifiable {
         print("✅ enterTradeIfStrategyIsValidated units: ", units)
         guard units > 0 else { return }
         
-        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", strategy.adjustStopLoss(entryBar: entryBar))
+        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", strategy.adjustStopLoss(entryBar: entryBar) ?? 0)
         guard let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) else { return }
         
-        evaluateMarketCoonditions(trade: Trade(
+        await evaluateMarketCoonditions(trade: Trade(
             entryBar: entryBar,
             price: entryBar.priceClose,
             trailStopPrice: initialStopLoss,
@@ -232,7 +246,7 @@ public class Watcher: Identifiable {
         }
     }
     
-    private func evaluateMarketCoonditions(trade: Trade) {
+    private func evaluateMarketCoonditions(trade: Trade) async {
         // TODO: 1. Check for market alerts
         
         // Is market open during liquid hours
@@ -245,7 +259,13 @@ public class Watcher: Identifiable {
             timeUntilClose > (1_800 * 6)
         else { return }
         
-        self.activeTrade = trade
+        let didEnterTrade = await MainActor.run {
+            guard self.activeTrade == nil else { return false }
+            self.activeTrade = trade
+            return true
+        }
+        // Did not enter trade, as there is currently pending trade
+        guard didEnterTrade else { return }
         do {
             print("✅✅ enter trade: ", trade)
             try marketOrder?.makeLimitWithTrailingStopOrder(
@@ -260,7 +280,10 @@ public class Watcher: Identifiable {
         }
     }
     
-    private func manageActiveTrade(strategy: (any Strategy)) {
+    private func manageActiveTrade() async {
+        guard !Task.isCancelled else { return }
+        let strategy = await MainActor.run { return self.strategy }
+        
         guard let activeTrade, let account = marketOrder?.account else { return }
         guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
         guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
@@ -271,7 +294,7 @@ public class Watcher: Identifiable {
                 price: position.averageCost,
                 quantity: position.quantity
             )
-            self.activeTrade = nil
+            await MainActor.run { self.activeTrade = nil }
         } catch {
             print("Something went wrong while exiting trade: \(error)")
         }
