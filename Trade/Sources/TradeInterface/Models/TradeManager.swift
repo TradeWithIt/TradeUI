@@ -24,6 +24,21 @@ import Combine
         }
     }
     
+    public func sortedWatchers() -> [Watcher] {
+        return watchers.values.sorted { lhs, rhs in
+            if lhs.contract.type != rhs.contract.type {
+                return lhs.contract.type < rhs.contract.type
+            }
+            if lhs.contract.exchangeId != rhs.contract.exchangeId {
+                return lhs.contract.exchangeId < rhs.contract.exchangeId
+            }
+            if lhs.contract.symbol != rhs.contract.symbol {
+                return lhs.contract.symbol < rhs.contract.symbol
+            }
+            return lhs.interval < rhs.interval
+        }
+    }
+    
     public init(
         market: Market = InteractiveBrokers(),
         persistance: Persistence = PersistenceManager.shared,
@@ -61,7 +76,7 @@ import Combine
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
-                marketData: market,
+                market: market,
                 fileProvider: fileProvider
             )
             watchers[assetId] = watcher

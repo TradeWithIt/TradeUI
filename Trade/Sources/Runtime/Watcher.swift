@@ -52,6 +52,7 @@ public class Watcher: Identifiable {
         interval: TimeInterval,
         strategyType: Strategy.Type = SupriseBarStrategy.self,
         marketData: MarketData,
+        marketOrder: MarketOrder?,
         fileProvider: CandleFileProvider,
         userInfo: [String: Any] = [:]
     ) throws {
@@ -60,10 +61,48 @@ public class Watcher: Identifiable {
         self.userInfo = userInfo
         self.strategyType = strategyType
         self.strategy = strategyType.init(candles: [])
+        self.marketOrder = marketOrder
         
         quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
         marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
         fetchTredingHours(marketData: marketData)
+    }
+    
+    public convenience init(
+        contract: any Contract,
+        interval: TimeInterval,
+        strategyType: Strategy.Type = SupriseBarStrategy.self,
+        market: Market,
+        fileProvider: CandleFileProvider,
+        userInfo: [String: Any] = [:]
+    ) throws {
+        try self.init(
+            contract: contract,
+            interval: interval,
+            strategyType: strategyType,
+            marketData: market,
+            marketOrder: market,
+            fileProvider: fileProvider,
+            userInfo: userInfo
+        )
+    }
+    
+    public convenience init(
+        contract: any Contract,
+        interval: TimeInterval,
+        strategyType: Strategy.Type = SupriseBarStrategy.self,
+        fileProvider: CandleFileProvider & MarketData,
+        userInfo: [String: Any] = [:]
+    ) throws {
+        try self.init(
+            contract: contract,
+            interval: interval,
+            strategyType: strategyType,
+            marketData: fileProvider,
+            marketOrder: nil,
+            fileProvider: fileProvider,
+            userInfo: userInfo
+        )
     }
     
     public func saveCandles(fileProvider: CandleFileProvider) {
@@ -124,6 +163,7 @@ public class Watcher: Identifiable {
                     guard !Task.isCancelled else { return }
                     try await Task.sleep(for: .seconds(interval - 5.0))
                     guard !Task.isCancelled else { return }
+                    // 5 sec before bar closes
                     await enterTradeIfStrategyIsValidated()
                 } catch {
                     guard !Task.isCancelled else { return }
@@ -148,6 +188,11 @@ public class Watcher: Identifiable {
                 
                 let bars = await updateBars(candlesData.bars, isSimulation: isSimulation)
                 let strat = updateStrategy(bars: bars)
+                
+                if strategy.patternIdentified, let timeOpen = candles.last?.timeOpen, timeOpen != bars.last?.timeOpen {
+                    print("✅ pattern was identified")
+                    saveCandles(fileProvider: fileProvider)
+                }
                 
                 await MainActor.run { self.strategy = strat }
                 // Simulation at the end of update loop perform trade
@@ -201,14 +246,14 @@ public class Watcher: Identifiable {
     private func enterTradeIfStrategyIsValidated() async {
         guard !Task.isCancelled else { return }
         let strategy = await MainActor.run { return self.strategy }
+        
         guard
             strategy.patternIdentified,
             let account = marketOrder?.account,
             let entryBar = strategy.candles.last
         else { return }
         
-        // 5 sec before bar closes
-        print("✅ enterTradeIfStrategyIsValidated interval: ", Date().timeIntervalSince1970, strategy.candles.last as Any)
+        print("✅ enterTradeIfStrategyIsValidated, symbol: \(symbol): intervl: \(interval)")
         
         saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
         
@@ -216,8 +261,9 @@ public class Watcher: Identifiable {
         print("✅ enterTradeIfStrategyIsValidated units: ", units)
         guard units > 0 else { return }
         
-        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", strategy.adjustStopLoss(entryBar: entryBar) ?? 0)
-        guard let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) else { return }
+        let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
+        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
+        guard let initialStopLoss else { return }
         
         await evaluateMarketCoonditions(trade: Trade(
             entryBar: entryBar,

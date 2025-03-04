@@ -22,7 +22,7 @@ public struct WatcherView: View {
             VStack {
                 HStack {
                     StrategyQuoteView(watcher: watcher, showActionButtons: showActionButtons)
-                    Spacer()
+                    Spacer(minLength: 0)
                     StrategyCheckList(strategy: watcher.strategy)
                 }
                 if showChart {

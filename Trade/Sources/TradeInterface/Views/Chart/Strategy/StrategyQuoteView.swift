@@ -47,10 +47,11 @@ public struct StrategyQuoteView: View {
             }
             GeometryReader { proxy in
                 HStack(spacing: 0) {
-                    Text(watcher.contract.symbol)
+                    Text("\(watcher.contract.symbol):\(watcher.interval.intervalString)")
                         .font(.headline)
                         .foregroundColor(.primary)
                         .frame(width: proxy.size.width / 6.0)
+                    
                     tickView(
                         title: isMarketOpen.isOpen ? "Open for" : "Closed for",
                         value: formattedTimeInterval(isMarketOpen.timeUntilChange)
@@ -110,7 +111,7 @@ public struct StrategyQuoteView: View {
                     .aspectRatio(1, contentMode: .fit)
             }
             
-            Button(action: { cancelMarketData(watcher.contract, interval: watcher.interval)}) {
+            Button(action: { Task { await cancelMarketData(watcher.contract, interval: watcher.interval) }}) {
                 Image(systemName: "xmark")
                     .aspectRatio(1, contentMode: .fit)
             }
@@ -128,7 +129,7 @@ public struct StrategyQuoteView: View {
         }
     }
     
-    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) {
+    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) async {
         let asset = Asset(
             instrument: Instrument(
                 type: contract.type,
@@ -138,7 +139,9 @@ public struct StrategyQuoteView: View {
             ),
             interval: interval
         )
-        watchedAssets.remove(asset)
+        await MainActor.run {
+            watchedAssets.remove(asset)
+        }
         trades.cancelMarketData(asset)
     }
     

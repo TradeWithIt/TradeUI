@@ -10,6 +10,8 @@ struct DashboardView: View {
     @State private var viewModel = ViewModel()
     @State private var account: Account?
     @State private var showTradeList = false
+    @State private var showIntervalPicker = false
+    @State private var interval: TimeInterval = 300
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -20,13 +22,21 @@ struct DashboardView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { showTradeList.toggle() }) {
-                    Label("Trade History", systemImage: "list.bullet")
+                    Label("Trade History", systemImage: "externaldrive")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showIntervalPicker.toggle() }) {
+                    IntervalLabelView(interval: interval)
                 }
             }
         }
         .sheet(isPresented: $showTradeList) {
             TradeListView()
                 .frame(minWidth: 400, minHeight: 300)
+        }
+        .popover(isPresented: $showIntervalPicker) {
+            IntervalPickerView(interval: $interval)
         }
         .searchSuggestions {
             ForEach(viewModel.suggestedSearches, id: \.hashValue) { suggestion in
@@ -37,15 +47,15 @@ struct DashboardView: View {
                         exchangeId: suggestion.exchangeId,
                         currency: suggestion.currency
                     ),
-                    interval: 300
+                    interval: interval
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.APPL, interval: 300)
-            suggestionView(contract: Instrument.BTC, interval: 300)
-            suggestionView(contract: Instrument.ETH, interval: 300)
-            suggestionView(contract: Instrument.MESM4, interval: 300)
-            suggestionView(contract: Instrument.M2KM4, interval: 300)
+            suggestionView(contract: Instrument.APPL, interval: interval)
+            suggestionView(contract: Instrument.BTC, interval: interval)
+            suggestionView(contract: Instrument.ETH, interval: interval)
+            suggestionView(contract: Instrument.MESM4, interval: interval)
+            suggestionView(contract: Instrument.M2KM4, interval: interval)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
@@ -58,10 +68,7 @@ struct DashboardView: View {
         }
     }
     
-    func suggestionView(
-        contract: any Contract,
-        interval: TimeInterval = 300
-    ) -> some View {
+    func suggestionView(contract: any Contract, interval: TimeInterval) -> some View {
         SuggestionView(label: contract.label, symbol: contract.symbol) {
             marketData(contract: contract, interval: interval)
         }
@@ -115,7 +122,7 @@ struct DashboardView: View {
     
     var charts: some View {
         VStack {
-            ForEach(Array(trades.watchers.values), id: \.id) { watcher in
+            ForEach(trades.sortedWatchers(), id: \.id) { watcher in
                 WatcherView(watcher: watcher, showChart: false, showActionButtons: true)
                 Divider()
             }
