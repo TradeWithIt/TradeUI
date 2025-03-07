@@ -51,11 +51,10 @@ struct DashboardView: View {
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.APPL, interval: interval)
-            suggestionView(contract: Instrument.BTC, interval: interval)
-            suggestionView(contract: Instrument.ETH, interval: interval)
-            suggestionView(contract: Instrument.MESM4, interval: interval)
-            suggestionView(contract: Instrument.M2KM4, interval: interval)
+            suggestionView(contract: Instrument.RTY, interval: interval)
+            suggestionView(contract: Instrument.NQ, interval: interval)
+            suggestionView(contract: Instrument.MES, interval: interval)
+            suggestionView(contract: Instrument.M2K, interval: interval)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
