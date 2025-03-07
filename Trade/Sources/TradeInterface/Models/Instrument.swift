@@ -59,8 +59,19 @@ extension Instrument {
     
     // MARK: Futures
     
+    /// NQ
+    static var NQ: Instrument {
+        Instrument(
+            type: "FUT",
+            symbol: "NQH5",
+            exchangeId: "CME",
+            currency: "USD"
+        )
+    }
+
+    
     /// Micro E-Mini S&P 500
-    static var MESM4: Instrument {
+    static var MES: Instrument {
         Instrument(
             type: "FUT",
             symbol: "MESH5",
@@ -70,7 +81,7 @@ extension Instrument {
     }
     
     /// E-Mini S&P 500
-    static var ESM4: Instrument {
+    static var ES: Instrument {
         Instrument(
             type: "FUT",
             symbol: "ESH5",
@@ -80,7 +91,7 @@ extension Instrument {
     }
     
     /// Micro E-mini Russell 2000
-    static var M2KM4: Instrument {
+    static var M2K: Instrument {
         Instrument(
             type: "FUT",
             symbol: "M2KH5",
@@ -90,7 +101,7 @@ extension Instrument {
     }
     
     /// E-Mini Russell 2000
-    static var RTYM4: Instrument {
+    static var RTY: Instrument {
         Instrument(
             type: "FUT",
             symbol: "RTYH5",
