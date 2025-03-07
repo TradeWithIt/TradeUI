@@ -193,6 +193,7 @@ struct ChartCanvasView_Previews: PreviewProvider {
         var priceHigh: Double = 105
         var priceLow: Double = 100
         var priceClose: Double = 95
+        var volume: Double? = nil
     }
 
     static var previews: some View {

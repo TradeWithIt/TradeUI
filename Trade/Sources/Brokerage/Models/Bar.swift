@@ -20,6 +20,7 @@ public struct Bar: Codable, Hashable {
     public var priceHigh: Double
     public var priceLow: Double
     public var priceClose: Double
+    public var volume: Double?
     
     public init(
         timeOpen: TimeInterval,
@@ -27,7 +28,8 @@ public struct Bar: Codable, Hashable {
         priceOpen: Double,
         priceHigh: Double,
         priceLow: Double,
-        priceClose: Double
+        priceClose: Double,
+        volume: Double?
     ) {
         self.timeOpen = timeOpen
         self.interval = interval
@@ -35,6 +37,7 @@ public struct Bar: Codable, Hashable {
         self.priceHigh = priceHigh
         self.priceLow = priceLow
         self.priceClose = priceClose
+        self.volume = volume
     }
 }
 

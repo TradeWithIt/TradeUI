@@ -383,7 +383,8 @@ extension Bar {
             priceOpen: update.open,
             priceHigh: update.high,
             priceLow: update.low,
-            priceClose: update.close
+            priceClose: update.close,
+            volume: update.volume
         )
     }
 }

@@ -67,13 +67,15 @@ public final class CSVMarketDataFile: MarketDataFile {
                                   let close = Double(components[4]) else {
                                 return
                             }
+                            let volume: Double? = components.count >= 6 ? Double(components[5]) : nil
                             let bar = Bar(
                                 timeOpen: timestamp,
                                 interval: interval,
                                 priceOpen: open,
                                 priceHigh: high,
                                 priceLow: low,
-                                priceClose: close
+                                priceClose: close,
+                                volume: volume
                             )
                             subject.send(CandleData(symbol: symbol, interval: interval, bars: [bar]))
                         } else {
@@ -139,13 +141,15 @@ public final class CSVMarketDataFile: MarketDataFile {
                       let close = Double(components[4]) else {
                     continue
                 }
+                let volume: Double? = components.count >= 6 ? Double(components[5]) : nil
                 let bar = Bar(
                     timeOpen: timestamp,
                     interval: 60.0,
                     priceOpen: open,
                     priceHigh: high,
                     priceLow: low,
-                    priceClose: close
+                    priceClose: close,
+                    volume: volume
                 )
                 bars.append(bar)
             }
