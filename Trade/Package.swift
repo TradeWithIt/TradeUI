@@ -40,7 +40,6 @@ let package = Package(
                 .target(name: "Persistence"),
                 
                 .product(name: "Collections", package: "swift-collections"),
-                .product(name: "TradeWithIt", package: "TradeWithIt"),
             ]
         ),
         .target(
@@ -61,6 +60,8 @@ let package = Package(
                 .product(name: "SwiftUIComponents", package: "SwiftUIComponents"),
                 .product(name: "TradingStrategy", package: "Strategy"),
                 .product(name: "ForexFactory", package: "ForexFactory"),
+                
+                .product(name: "TradeWithIt", package: "TradeWithIt"),
             ]
         ),
     ]
