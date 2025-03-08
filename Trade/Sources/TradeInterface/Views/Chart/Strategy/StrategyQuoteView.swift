@@ -140,7 +140,7 @@ public struct StrategyQuoteView: View {
             interval: interval
         )
         await MainActor.run {
-            watchedAssets.remove(asset)
+            _ = watchedAssets.remove(asset)
         }
         trades.cancelMarketData(asset)
     }

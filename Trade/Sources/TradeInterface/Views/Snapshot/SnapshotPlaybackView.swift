@@ -18,7 +18,7 @@ public struct SnapshotPlaybackView: View {
     
     public var body: some View {
         Group {
-            if let watcher {
+            if watcher != nil {
                 WatcherView(watcher: $watcher)
             } else {
                 ProgressView()

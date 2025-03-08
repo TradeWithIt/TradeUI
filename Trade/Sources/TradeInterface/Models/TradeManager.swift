@@ -4,6 +4,7 @@ import Brokerage
 import Persistence
 import NIOConcurrencyHelpers
 import Combine
+import TradeWithIt
 
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
@@ -25,17 +26,19 @@ import Combine
     }
     
     public func sortedWatchers() -> [Watcher] {
-        return watchers.values.sorted { lhs, rhs in
-            if lhs.contract.type != rhs.contract.type {
-                return lhs.contract.type < rhs.contract.type
+        return lock.withLock {
+            watchers.values.sorted { lhs, rhs in
+                if lhs.contract.type != rhs.contract.type {
+                    return lhs.contract.type < rhs.contract.type
+                }
+                if lhs.contract.exchangeId != rhs.contract.exchangeId {
+                    return lhs.contract.exchangeId < rhs.contract.exchangeId
+                }
+                if lhs.contract.symbol != rhs.contract.symbol {
+                    return lhs.contract.symbol < rhs.contract.symbol
+                }
+                return lhs.interval < rhs.interval
             }
-            if lhs.contract.exchangeId != rhs.contract.exchangeId {
-                return lhs.contract.exchangeId < rhs.contract.exchangeId
-            }
-            if lhs.contract.symbol != rhs.contract.symbol {
-                return lhs.contract.symbol < rhs.contract.symbol
-            }
-            return lhs.interval < rhs.interval
         }
     }
     
@@ -76,6 +79,9 @@ import Combine
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
+                //SupriseBarStrategy.self
+                //ORBStrategy
+                strategyType: SupriseBarStrategy.self,
                 market: market,
                 fileProvider: fileProvider
             )

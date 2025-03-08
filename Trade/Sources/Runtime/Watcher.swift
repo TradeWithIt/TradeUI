@@ -3,7 +3,6 @@ import OrderedCollections
 import Brokerage
 import Persistence
 import TradingStrategy
-import TradeWithIt
 import SwiftUI
 
 @Observable
@@ -51,7 +50,7 @@ public class Watcher: Identifiable {
     public init(
         contract: any Contract,
         interval: TimeInterval,
-        strategyType: Strategy.Type = SupriseBarStrategy.self,
+        strategyType: Strategy.Type,
         marketData: MarketData,
         marketOrder: MarketOrder?,
         fileProvider: CandleFileProvider,
@@ -72,7 +71,7 @@ public class Watcher: Identifiable {
     public convenience init(
         contract: any Contract,
         interval: TimeInterval,
-        strategyType: Strategy.Type = SupriseBarStrategy.self,
+        strategyType: Strategy.Type,
         market: Market,
         fileProvider: CandleFileProvider,
         userInfo: [String: Any] = [:]
@@ -91,7 +90,7 @@ public class Watcher: Identifiable {
     public convenience init(
         contract: any Contract,
         interval: TimeInterval,
-        strategyType: Strategy.Type = SupriseBarStrategy.self,
+        strategyType: Strategy.Type,
         fileProvider: CandleFileProvider & MarketData,
         userInfo: [String: Any] = [:]
     ) throws {
