@@ -5,14 +5,13 @@ public struct ChartView<O: View, B: View>: View {
     @State private var labelsVertical: [Double] = []
     @State private var labelsHorizontal: [String] = []
     @State private var scale = Scale()
-    @State private var scaleOriginal = Scale()
     @State private var scaleDrag: Scale? = nil
     @State private var canvasSize: CGSize = .zero
     @State private var isManuallyDisplaced: Bool = false
     
     public let data: [Klines]
     public let interval: TimeInterval
-    
+    public var scaleOriginal: Scale
     private var canvasOverlay: (_ scale: Scale, _ frame: CGRect) -> O
     private var canvasBackground: (_ scale: Scale, _ frame: CGRect) -> B
     
@@ -23,11 +22,13 @@ public struct ChartView<O: View, B: View>: View {
     public init(
         interval: TimeInterval,
         data: [Klines],
+        scale: Scale,
         overlay: @escaping (_ scale: Scale, _ frame: CGRect) -> O,
         background: @escaping (_ scale: Scale, _ frame: CGRect) -> B
     ) {
         self.data = data
         self.interval = interval
+        self.scaleOriginal = scale
         self.canvasOverlay = overlay
         self.canvasBackground = background
     }
@@ -73,11 +74,9 @@ public struct ChartView<O: View, B: View>: View {
         }
         .onChange(of: data.last?.timeOpen, initial: true) {
             Task {
-                let newScale = Scale(data: data)
                 await MainActor.run {
-                    scaleOriginal = newScale
                     if !isManuallyDisplaced {
-                        self.scale = newScale
+                        self.scale = scaleOriginal
                     }
                     updateScales(x: scale.x, y: scale.y)
                 }
@@ -192,6 +191,7 @@ public struct ChartView<O: View, B: View>: View {
         ChartView<O, Content>(
             interval: interval,
             data: data,
+            scale: scaleOriginal,
             overlay: canvasOverlay,
             background: view
         )
@@ -201,6 +201,7 @@ public struct ChartView<O: View, B: View>: View {
         ChartView<Content, B>(
             interval: interval,
             data: data,
+            scale: scaleOriginal,
             overlay: view,
             background: canvasBackground
         )
@@ -213,11 +214,13 @@ public extension ChartView where O == EmptyView {
     init(
         interval: TimeInterval,
         data: [Klines],
+        scale: Scale,
         background: @escaping (_ scale: Scale, _ frame: CGRect) -> B
     ) {
         self.init(
             interval: interval,
             data: data,
+            scale: scale,
             overlay: { _, _  in EmptyView() },
             background: background
         )
@@ -228,11 +231,13 @@ public extension ChartView where B == EmptyView {
     init(
         interval: TimeInterval,
         data: [Klines],
+        scale: Scale,
         overlay: @escaping (_ scale: Scale, _ frame: CGRect) -> O
     ) {
         self.init(
             interval: interval,
             data: data,
+            scale: scale,
             overlay: overlay,
             background: { _, _ in EmptyView() }
         )
@@ -242,11 +247,13 @@ public extension ChartView where B == EmptyView {
 public extension ChartView where O == EmptyView, B == EmptyView {
     init(
         interval: TimeInterval,
-        data: [Klines]
+        data: [Klines],
+        scale: Scale
     ) {
         self.init(
             interval: interval,
             data: data,
+            scale: scale,
             overlay: { _, _  in EmptyView() },
             background: { _, _ in EmptyView() }
         )
@@ -255,6 +262,6 @@ public extension ChartView where O == EmptyView, B == EmptyView {
 
 struct ChartView_Previews: PreviewProvider {
     static var previews: some View {
-        ChartView(interval: 60, data: [])
+        ChartView(interval: 60, data: [], scale: Scale())
     }
 }

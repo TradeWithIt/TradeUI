@@ -18,7 +18,7 @@ public struct StrategyChart: View {
     }
 
     func chart(candles: [Klines]) -> some View {
-        ChartView(interval: interval, data: candles)
+        ChartView(interval: interval, data: candles, scale: strategy.scale)
             .chartBackground { scale, frame in
                 drawPhases(strategy.phases, ofCandles: candles, scale: scale, frame: frame)
             }
@@ -99,7 +99,8 @@ public struct StrategyChart: View {
         if !candles.isEmpty {
             ChartView(
                 interval: candles.first?.interval ?? 900,
-                data: candles
+                data: candles,
+                scale: strategy.supportScale
             )
             .chartBackground { scale, frame in
                 drawPhases(strategy.supportPhases, ofCandles: candles, scale: scale, frame: frame)
