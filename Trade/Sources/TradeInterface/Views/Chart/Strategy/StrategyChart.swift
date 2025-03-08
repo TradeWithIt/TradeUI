@@ -94,44 +94,47 @@ public struct StrategyChart: View {
             }
     }
     
+    @ViewBuilder
     func supportChart(candles: [Klines]) -> some View {
-        ChartView(
-            interval: candles.first?.interval ?? 900,
-            data: candles
-        )
-        .chartBackground { scale, frame in
-            drawPhases(strategy.supportPhases, ofCandles: candles, scale: scale, frame: frame)
-        }
-        .chartOverlay { scale, frame in
-            // Moving Average longTermLength: Int = 24
-            
-            Path.quadCurvedPathWithPoints(
-                points: strategy.longTermMA.enumerated()
-                    .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
-                canvas: frame
+        if !candles.isEmpty {
+            ChartView(
+                interval: candles.first?.interval ?? 900,
+                data: candles
             )
-            .stroke(Color.purple)
-            
-            // Resistance  Levels
-            ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
-                let resistance = strategy.levels.resistance[i]
-                let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
-                Path.pathWithPoints(
-                    points: [point, CGPoint(x: frame.maxX, y: point.y)],
-                    canvas: frame
-                )
-                .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
+            .chartBackground { scale, frame in
+                drawPhases(strategy.supportPhases, ofCandles: candles, scale: scale, frame: frame)
             }
-            
-            // Support Levels
-            ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
-                let support = strategy.levels.support[i]
-                let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
-                Path.pathWithPoints(
-                    points: [point, CGPoint(x: frame.maxX, y: point.y)],
+            .chartOverlay { scale, frame in
+                // Moving Average longTermLength: Int = 24
+                
+                Path.quadCurvedPathWithPoints(
+                    points: strategy.longTermMA.enumerated()
+                        .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
                     canvas: frame
                 )
-                .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
+                .stroke(Color.purple)
+                
+                // Resistance  Levels
+                ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
+                    let resistance = strategy.levels.resistance[i]
+                    let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
+                    Path.pathWithPoints(
+                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
+                        canvas: frame
+                    )
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
+                }
+                
+                // Support Levels
+                ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
+                    let support = strategy.levels.support[i]
+                    let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
+                    Path.pathWithPoints(
+                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
+                        canvas: frame
+                    )
+                    .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
+                }
             }
         }
     }

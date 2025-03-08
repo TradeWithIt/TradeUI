@@ -9,6 +9,7 @@ public struct SnapshotView: View {
     @Environment(\.presentationMode) var presentationMode
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
+    @State private var selectedStrategyType: String = "ORBStrategy"
     
     let node: FileSnapshotsView.FileNode?
     let fileProvider: CandleFileProvider
@@ -20,15 +21,17 @@ public struct SnapshotView: View {
     
     public var body: some View {
         Group {
-            if let strategy {
-                VStack {
-                    StrategyCheckList(strategy: strategy)
-                    StrategyChart(strategy: strategy, interval: interval ?? 60)
+            VStack {
+                strategyPicker
+                if let strategy {
+                    VStack {
+                        StrategyCheckList(strategy: strategy)
+                        StrategyChart(strategy: strategy, interval: interval ?? 60)
+                    }
+                } else {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
                 }
-            } else {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .onAppear(perform: loadData)
             }
         }
         .frame(minWidth: 1000, minHeight: 450)
@@ -46,11 +49,30 @@ public struct SnapshotView: View {
         }
     }
     
-    private func loadData() {
+    private var strategyPicker: some View {
+        Picker("Strategy", selection: $selectedStrategyType) {
+            Text("ORBStrategy").tag(String(describing: ORBStrategy.self))
+            Text("SupriseBarStrategy").tag(String(describing: SupriseBarStrategy.self))
+        }
+        .pickerStyle(.automatic)
+        .onChange(of: selectedStrategyType, initial: true) {
+            switch selectedStrategyType {
+            case "ORBStrategy":
+                loadData(ORBStrategy.self)
+            case "SupriseBarStrategy":
+                loadData(SupriseBarStrategy.self)
+            default:
+                break
+            }
+        }
+        .padding()
+    }
+    
+    private func loadData(_ strat: Strategy.Type) {
         guard let node else { return }
         do {
             let candleData = try fileProvider.loadFile(url: node.url)
-            strategy = SupriseBarStrategy(candles: candleData?.bars ?? [])
+            strategy = strat.init(candles: candleData?.bars ?? [])
             interval = candleData?.interval
         } catch {
             print("Failed to load data for:", node.url)
