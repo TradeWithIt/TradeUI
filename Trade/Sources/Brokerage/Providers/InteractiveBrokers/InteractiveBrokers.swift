@@ -70,6 +70,8 @@ public class InteractiveBrokers: Market {
     private var unsubscribeQuote: Set<IBContract> = []
     
     deinit {
+        _subscriptions.forEach { $0.cancel() }
+        _subscriptions.removeAll()
         client.disconnect()
     }
     

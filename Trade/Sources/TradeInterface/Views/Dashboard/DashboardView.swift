@@ -82,7 +82,7 @@ struct DashboardView: View {
                     }
                     Spacer()
                     if let _ = trades.watcher {
-                        OrderView(account: account, watcher: trades.watcher).padding()
+                        OrderView(watcher: .constant(trades.watcher), account: account).padding()
                     }
                 }
                 .tag(ViewModel.SidebarTab.watchers)
@@ -113,7 +113,7 @@ struct DashboardView: View {
             
             Text("Portfolio").font(.title2).padding()
             Divider()
-            OrderView(account: account, watcher: trades.watcher, show: .portfolio)
+            OrderView(watcher: .constant(trades.watcher), account: account, show: .portfolio)
             
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
@@ -122,7 +122,7 @@ struct DashboardView: View {
     var charts: some View {
         VStack {
             ForEach(trades.sortedWatchers(), id: \.id) { watcher in
-                WatcherView(watcher: watcher, showChart: false, showActionButtons: true)
+                WatcherView(watcher: .constant(watcher), showChart: false, showActionButtons: true)
                 Divider()
             }
         }

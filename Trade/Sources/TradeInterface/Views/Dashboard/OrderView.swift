@@ -10,8 +10,8 @@ struct OrderView: View {
     @Environment(TradeManager.self) private var trades
     @State private var contractNumber: Int32 = 1
     @State private var stopLoss: Int = 75
+    @Binding var watcher: Watcher?
     let account: Account?
-    let watcher: Watcher?
     var show: Style = .orderEntry
     
     var orders: [Order] {

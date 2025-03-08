@@ -45,6 +45,7 @@ public class Watcher: Identifiable {
         marketOrder = nil
         quoteTask?.cancel()
         marketDataTask?.cancel()
+        tradeTask?.cancel()
     }
 
     public init(
@@ -121,34 +122,31 @@ public class Watcher: Identifiable {
     
     private func setupMarketQuoteData(market: MarketData) async {
         do {
+            var latestQuote: Quote?
             for await newQuote in try market.quotePublisher(contract: contract).values {
-                await MainActor.run {
-                    if var existingQuote = self.quote {
-                        switch newQuote.type {
-                        case .bidPrice:
-                            existingQuote.bidPrice = newQuote.value
-                        case .askPrice:
-                            existingQuote.askPrice = newQuote.value
-                        case .lastPrice:
-                            existingQuote.lastPrice = newQuote.value
-                        case .volume:
-                            existingQuote.volume = newQuote.value
-                        case .none:
-                            break
-                        }
-                        existingQuote.date = Date()
-                        self.quote = existingQuote
-                    } else {
-                        self.quote = Quote(
-                            contract: contract,
-                            date: Date(),
-                            bidPrice: newQuote.type == .bidPrice ? newQuote.value : nil,
-                            askPrice: newQuote.type == .askPrice ? newQuote.value : nil,
-                            lastPrice: newQuote.type == .lastPrice ? newQuote.value : nil,
-                            volume: newQuote.type == .volume ? newQuote.value : nil
-                        )
+                if var existingQuote = latestQuote ?? self.quote {
+                    switch newQuote.type {
+                    case .bidPrice: existingQuote.bidPrice = newQuote.value
+                    case .askPrice: existingQuote.askPrice = newQuote.value
+                    case .lastPrice: existingQuote.lastPrice = newQuote.value
+                    case .volume: existingQuote.volume = newQuote.value
+                    case .none: break
                     }
+                    existingQuote.date = Date()
+                    latestQuote = existingQuote
+                } else {
+                    latestQuote = Quote(
+                        contract: contract,
+                        date: Date(),
+                        bidPrice: newQuote.type == .bidPrice ? newQuote.value : nil,
+                        askPrice: newQuote.type == .askPrice ? newQuote.value : nil,
+                        lastPrice: newQuote.type == .lastPrice ? newQuote.value : nil,
+                        volume: newQuote.type == .volume ? newQuote.value : nil
+                    )
                 }
+            }
+            if let updatedQuote = latestQuote {
+                await MainActor.run { self.quote = updatedQuote }
             }
         } catch {
             print("Quote stream error: \(error)")
@@ -156,19 +154,17 @@ public class Watcher: Identifiable {
     }
     
     private func scheduleTradeTask() async {
-        await MainActor.run {
-            tradeTask?.cancel()
-            tradeTask = Task {
-                do {
-                    guard !Task.isCancelled else { return }
-                    try await Task.sleep(for: .seconds(interval - 5.0))
-                    guard !Task.isCancelled else { return }
-                    // 5 sec before bar closes
-                    await enterTradeIfStrategyIsValidated()
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    print("🔴 Failed to schedule trade task: \(error)")
-                }
+        tradeTask?.cancel()
+        tradeTask = Task {
+            do {
+                guard !Task.isCancelled else { return }
+                try await Task.sleep(for: .seconds(interval - 5.0))
+                guard !Task.isCancelled else { return }
+                // 5 sec before bar closes
+                await enterTradeIfStrategyIsValidated()
+            } catch {
+                guard !Task.isCancelled else { return }
+                print("🔴 Failed to schedule trade task: \(error)")
             }
         }
     }
@@ -220,7 +216,7 @@ public class Watcher: Identifiable {
     }
     
     private func updateBars(_ bars: [Bar], isSimulation: Bool) async -> [Bar] {
-        var currentCandles = self.candles
+        var currentCandles = await MainActor.run { self.candles }
         if currentCandles.isEmpty {
             currentCandles = OrderedSet(bars)
         } else {
@@ -390,7 +386,8 @@ extension Candle {
             priceOpen: data.priceOpen,
             priceHigh: data.priceHigh,
             priceLow: data.priceLow,
-            priceClose: data.priceClose
+            priceClose: data.priceClose,
+            volume: data.volume
         )
     }
 }

@@ -10,9 +10,9 @@ public struct StrategyQuoteView: View {
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
+    @Binding var watcher: Watcher
     @State private var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    let watcher: Watcher
     let showActionButtons: Bool
     
     // Computed properties to get the latest values from `Quote`
