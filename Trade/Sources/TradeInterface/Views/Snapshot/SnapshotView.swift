@@ -9,7 +9,7 @@ public struct SnapshotView: View {
     @Environment(\.presentationMode) var presentationMode
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
-    @State private var selectedStrategyType: String = "ORBStrategy"
+    @State private var selectedStrategyType: String = "SupriseBarStrategy"
     
     let node: FileSnapshotsView.FileNode?
     let fileProvider: CandleFileProvider

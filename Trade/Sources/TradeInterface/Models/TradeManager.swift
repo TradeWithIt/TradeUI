@@ -81,7 +81,7 @@ import TradeWithIt
                 interval: interval,
                 //SupriseBarStrategy.self
                 //ORBStrategy
-                strategyType: ORBStrategy.self,
+                strategyType: SupriseBarStrategy.self,
                 market: market,
                 fileProvider: fileProvider
             )
