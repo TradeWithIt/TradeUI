@@ -14,8 +14,8 @@ public struct ORBStrategy: Strategy {
     
     public init(candles: [Klines]) {
         let interval = candles.first?.interval ?? 60
-        // Calculate number of candles for the whole trading day (24 hours of market time)
-        let totalTradingSeconds = 24.0 * 3600.0
+        // Calculate number of candles for the whole trading day (8 hours of market time)
+        let totalTradingSeconds = 8 * 3600.0
         let candleCount = Int(totalTradingSeconds / interval)
         let scale = Scale(data: candles, candlesPerScreen: candleCount)
         

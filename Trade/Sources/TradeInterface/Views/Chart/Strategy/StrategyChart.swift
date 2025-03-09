@@ -39,7 +39,7 @@ public struct StrategyChart: View {
                         points: [point, CGPoint(x: frame.maxX, y: point.y)],
                         canvas: frame
                     )
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
                 }
                 
                 // Support Levels
@@ -50,7 +50,7 @@ public struct StrategyChart: View {
                         points: [point, CGPoint(x: frame.maxX, y: point.y)],
                         canvas: frame
                     )
-                    .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
+                    .stroke(Color.red, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
                 }
                 
                 // Near Short-Term Moving Average Range
@@ -142,14 +142,12 @@ public struct StrategyChart: View {
     
     private func drawPhases(_ phases: [Phase], ofCandles candles: [Klines], scale: Scale, frame: CGRect) -> some View {
         ForEach(0 ..< phases.count, id: \.self) { i in
-            let minBar = candles[phases[i].range].min(by: { (a, b) -> Bool in
-                return Swift.min(a.priceOpen, a.priceClose) < Swift.min(b.priceOpen, b.priceClose)
-            })!
-            let maxBar = candles[phases[i].range].max(by: { (a, b) -> Bool in
-                return Swift.max(a.priceOpen, a.priceClose) < Swift.max(b.priceOpen, b.priceClose)
-            })!
-            let max = Swift.max(maxBar.priceOpen, maxBar.priceClose)
-            let min = Swift.min(minBar.priceOpen, minBar.priceClose)
+            let min = candles[phases[i].range].min(by: { (a, b) -> Bool in
+                return a.priceLow < b.priceLow
+            })!.priceLow
+            let max = candles[phases[i].range].max(by: { (a, b) -> Bool in
+                return a.priceHigh < b.priceHigh
+            })!.priceHigh
             Rectangle()
                 .fill(phaseColor(for: phases[i].type))
                 .frame(
