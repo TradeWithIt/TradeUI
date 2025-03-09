@@ -99,8 +99,6 @@ public class MarketDataFileProvider: MarketData {
         guard let fileURL = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL else {
             throw Error.missingFile("File URL missing in user info")
         }
-        let playbackSpeed = userInfo[MarketDataKey.snapshotPlaybackSpeedInfo.rawValue] as? Double ?? 1
-        
         guard FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) else {
             throw Error.missingFile("File \(fileURL.lastPathComponent) not found.")
         }
@@ -110,7 +108,6 @@ public class MarketDataFileProvider: MarketData {
         return try marketDataFile.readBars(
             symbol: product.symbol,
             interval: interval,
-            speedFactor: playbackSpeed,
             loadAllAtOnce: false
         )
     }

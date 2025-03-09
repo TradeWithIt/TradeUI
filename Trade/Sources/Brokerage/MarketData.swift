@@ -4,7 +4,6 @@ import Combine
 public enum MarketDataKey: String {
     case bufferInfo = "buffer"
     case snapshotFileURL = "snapshot.file.url"
-    case snapshotPlaybackSpeedInfo = "snapshot.playback.speed"
 }
 
 public protocol MarketData {

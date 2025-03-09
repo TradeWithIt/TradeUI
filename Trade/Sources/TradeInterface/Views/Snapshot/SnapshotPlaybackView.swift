@@ -50,7 +50,6 @@ public struct SnapshotPlaybackView: View {
                 fileProvider: fileProvider,
                 userInfo: [
                     MarketDataKey.snapshotFileURL.rawValue: url,
-                    MarketDataKey.snapshotPlaybackSpeedInfo.rawValue: 300.0,
                 ]
             )
         } catch {

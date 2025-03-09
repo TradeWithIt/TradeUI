@@ -3,48 +3,53 @@ import Combine
 
 public final class KlineMarketDataFile: MarketDataFile {
     public let fileUrl: URL
-    private var timerSubscription: AnyCancellable?
+    private let subject = PassthroughSubject<CandleData, Never>()
+    private var fileHandle: FileHandle?
+    private var symbol: String = ""
+    private var barInterval: TimeInterval = 0
     
     public init(fileUrl: URL) {
         self.fileUrl = fileUrl
     }
     
+    public func publish() {
+        guard let fileHandle = fileHandle else { return }
+        
+        if let lineData = fileHandle.readLine() {
+            let decoder = JSONDecoder()
+            if let bar = try? decoder.decode(Bar.self, from: lineData) {
+                subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
+            }
+            Task {
+                try await Task.sleep(for: .milliseconds(100))
+                await MainActor.run { publish() }
+            }
+        } else {
+            fileHandle.closeFile()
+            subject.send(completion: .finished)
+        }
+    }
+    
     public func readBars(
         symbol: Symbol,
         interval: TimeInterval,
-        speedFactor: Double = 1.0,
         loadAllAtOnce: Bool = false
     ) throws -> AnyPublisher<CandleData, Never> {
-        let subject = PassthroughSubject<CandleData, Never>()
+        self.fileHandle = try FileHandle(forReadingFrom: fileUrl)
+        self.symbol = fileHandle?.readLine()?.toString() ?? ""
+        self.barInterval = TimeInterval(fileHandle?.readLine()?.toString() ?? "0") ?? 0
+        _ = fileHandle?.readLine()?.toString() // strategyName
         
         if loadAllAtOnce {
-            // Load and emit all bars at once
             if let data = loadCandleData() {
                 subject.send(data)
             }
             subject.send(completion: .finished)
         } else {
-            // Emit bar by bar based on the interval and speed factor
-            let fileHandle = try FileHandle(forReadingFrom: fileUrl)
-            let symbol = fileHandle.readLine()?.toString() ?? ""
-            let barInterval = TimeInterval(fileHandle.readLine()?.toString() ?? "0") ?? 0
-            let _ = fileHandle.readLine()?.toString() ?? "" // strategyName
-            let playbackSpeed = interval / speedFactor
-            timerSubscription = Timer.publish(every: playbackSpeed, on: .main, in: .common)
-                .autoconnect()
-                .sink {[weak self] _ in
-                    if let lineData = fileHandle.readLine() {
-                        let decoder = JSONDecoder()
-                        if let bar = try? decoder.decode(Bar.self, from: lineData) {
-                            subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
-                        }
-                    } else {
-                        fileHandle.closeFile()
-                        subject.send(completion: .finished)
-                        self?.timerSubscription?.cancel()
-                        self?.timerSubscription = nil
-                    }
-                }
+            Task {
+                try await Task.sleep(for: .milliseconds(200))
+                await MainActor.run { publish() }
+            }
         }
         
         return subject.eraseToAnyPublisher()
