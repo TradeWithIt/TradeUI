@@ -73,14 +73,10 @@ public struct ChartView<O: View, B: View>: View {
             IntervalLabelView(interval: interval, backgroundColor: Color.black.opacity(0.7))
         }
         .onChange(of: data.last?.timeOpen, initial: true) {
-            Task {
-                await MainActor.run {
-                    if !isManuallyDisplaced {
-                        self.scale = scaleOriginal
-                    }
-                    updateScales(x: scale.x, y: scale.y)
-                }
+            if !isManuallyDisplaced {
+                self.scale = scaleOriginal
             }
+            updateScales(x: scale.x, y: scale.y)
         }
         .onChange(of: scaleOriginal) {
             guard !isManuallyDisplaced else { return }

@@ -160,7 +160,7 @@ public class Watcher: Identifiable {
                 try await Task.sleep(for: .seconds(interval - 5.0))
                 guard !Task.isCancelled else { return }
                 // 5 sec before bar closes
-                await enterTradeIfStrategyIsValidated()
+                await enterTradeIfStrategyIsValidated(isSimulation: false)
             } catch {
                 guard !Task.isCancelled else { return }
                 print("🔴 Failed to schedule trade task: \(error)")
@@ -190,10 +190,20 @@ public class Watcher: Identifiable {
                 }
                 
                 await MainActor.run { self.strategy = strat }
-                // Simulation at the end of update loop perform trade
-                if isSimulation { await enterTradeIfStrategyIsValidated() }
+                
+                if isSimulation {
+                    // Simulation at the end of update loop perform trade
+                    await enterTradeIfStrategyIsValidated(isSimulation: isSimulation)
+                }
+                
                 // Manage active positions (in trade)
-                await manageActiveTrade()
+                await manageActiveTrade(isSimulation: isSimulation)
+                
+                // If simulation, pull next candle
+                if let fileData = marketData as? MarketDataFileProvider,
+                   let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
+                    fileData.pull(url: url)
+                }
             }
         } catch {
             print("Market data stream error: \(error)")
@@ -238,34 +248,43 @@ public class Watcher: Identifiable {
         strategyType.init(candles: bars)
     }
     
-    private func enterTradeIfStrategyIsValidated() async {
+    private func enterTradeIfStrategyIsValidated(isSimulation: Bool) async {
         guard !Task.isCancelled else { return }
+        guard activeTrade == nil else { return }
         let strategy = await MainActor.run { return self.strategy }
+        guard strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
         
-        guard
-            strategy.patternIdentified,
-            let account = marketOrder?.account,
-            let entryBar = strategy.candles.last
-        else { return }
-        
-        print("✅ enterTradeIfStrategyIsValidated, symbol: \(symbol): intervl: \(interval)")
-        
-        saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
-        
-        let units = strategy.unitCount(equity: account.buyingPower, feePerUnit: 50)
-        print("✅ enterTradeIfStrategyIsValidated units: ", units)
-        guard units > 0 else { return }
-        
-        let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
-        print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
-        guard let initialStopLoss else { return }
-        
-        await evaluateMarketCoonditions(trade: Trade(
-            entryBar: entryBar,
-            price: entryBar.priceClose,
-            trailStopPrice: initialStopLoss,
-            units: Double(units)
-        ))
+        if isSimulation {
+            let units = strategy.unitCount(equity: 1_000_000, feePerUnit: 50)
+            let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) ?? 0
+            let trade = Trade(
+                entryBar: entryBar,
+                price: entryBar.priceClose,
+                trailStopPrice: initialStopLoss,
+                units: Double(units)
+            )
+            activeTrade = trade
+            print("✅🟤 enter trade: ", trade)
+        } else if let account = marketOrder?.account {
+            print("✅ enterTradeIfStrategyIsValidated, symbol: \(symbol): intervl: \(interval)")
+            
+            saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
+            
+            let units = strategy.unitCount(equity: account.buyingPower, feePerUnit: 50)
+            print("✅ enterTradeIfStrategyIsValidated units: ", units)
+            guard units > 0 else { return }
+            
+            let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
+            print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
+            guard let initialStopLoss else { return }
+            
+            await evaluateMarketCoonditions(trade: Trade(
+                entryBar: entryBar,
+                price: entryBar.priceClose,
+                trailStopPrice: initialStopLoss,
+                units: Double(units)
+            ))
+        }
     }
     
     private func saveTradeRecordEntrySnapshot(entryBar: any Klines, buyingPower: Double) {
@@ -321,34 +340,40 @@ public class Watcher: Identifiable {
         }
     }
     
-    private func manageActiveTrade() async {
+    private func manageActiveTrade(isSimulation: Bool) async {
         guard !Task.isCancelled else { return }
         let strategy = await MainActor.run { return self.strategy }
         
-        guard let activeTrade, let account = marketOrder?.account else { return }
+        guard let activeTrade, activeTrade.entryBar.timeOpen != strategy.candles.last?.timeOpen else { return }
         guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
-        guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
-        do {
-            try marketOrder?.makeLimitOrder(
-                contract: contract,
-                action: activeTrade.entryBar.isLong ? .sell : .buy,
-                price: position.averageCost,
-                quantity: position.quantity
-            )
-            await MainActor.run { self.activeTrade = nil }
-        } catch {
-            print("Something went wrong while exiting trade: \(error)")
-        }
         
-        Task {
-            PersistenceManager.shared.updateTradeExit(
-                symbol: contract.symbol,
-                exitPrice: activeTrade.entryBar.priceClose,
-                buyingPower: account.buyingPower,
-                exitSnapshot: strategy.candles.map { Candle(from: $0) }
-            )
+        if isSimulation {
+            await MainActor.run { self.activeTrade = nil }
+        } else {
+            guard let account = marketOrder?.account else { return }
+            guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
+            do {
+                try marketOrder?.makeLimitOrder(
+                    contract: contract,
+                    action: activeTrade.entryBar.isLong ? .sell : .buy,
+                    price: position.averageCost,
+                    quantity: position.quantity
+                )
+                await MainActor.run { self.activeTrade = nil }
+            } catch {
+                print("Something went wrong while exiting trade: \(error)")
+            }
+            
+            Task {
+                PersistenceManager.shared.updateTradeExit(
+                    symbol: contract.symbol,
+                    exitPrice: activeTrade.entryBar.priceClose,
+                    buyingPower: account.buyingPower,
+                    exitSnapshot: strategy.candles.map { Candle(from: $0) }
+                )
+            }
         }
-        print("❌ Exiting trade at \(activeTrade)")
+        print("❌ Exiting trade at \(activeTrade), lastBar: \(strategy.candles.last), mva: \(strategy.shortTermMA.last ?? 0)")
     }
 }
 

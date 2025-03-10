@@ -16,19 +16,19 @@ public final class CSVMarketDataFile: MarketDataFile {
     private func detectDelimiter() -> String {
         guard FileManager.default.fileExists(atPath: fileUrl.path) else {
             print("Error: File does not exist at \(fileUrl.path)")
-            return ","
+            return ";"
         }
-
-        do {
-            fileHandle = try FileHandle(forReadingFrom: fileUrl)
-            defer { fileHandle?.closeFile() }
-            if let firstLine = fileHandle?.readLine()?.toString(), firstLine.contains(";") {
-                return ";"
-            }
-        } catch {
-            print("Error detecting delimiter: \(error)")
+        
+        guard let fileHandle = try? FileHandle(forReadingFrom: fileUrl) else {
+            return ";"
         }
-        return ","
+        defer { fileHandle.closeFile() }
+        
+        if let firstLineData = fileHandle.readLine(),
+           let firstLine = firstLineData.toString() {
+            return firstLine.contains(";") ? ";" : ","
+        }
+        return ";"
     }
     
     public func publish() {
@@ -55,10 +55,6 @@ public final class CSVMarketDataFile: MarketDataFile {
                 volume: volume
             )
             subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
-            Task {
-                try await Task.sleep(for: .milliseconds(100))
-                await MainActor.run { publish() }
-            }
         } else {
             print("End of file reached or error reading line.")
             fileHandle.closeFile()

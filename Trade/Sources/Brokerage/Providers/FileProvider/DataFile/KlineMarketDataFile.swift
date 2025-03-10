@@ -14,18 +14,14 @@ public final class KlineMarketDataFile: MarketDataFile {
     
     public func publish() {
         guard let fileHandle = fileHandle else { return }
-        
         if let lineData = fileHandle.readLine() {
             let decoder = JSONDecoder()
             if let bar = try? decoder.decode(Bar.self, from: lineData) {
                 subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
             }
-            Task {
-                try await Task.sleep(for: .milliseconds(100))
-                await MainActor.run { publish() }
-            }
         } else {
             fileHandle.closeFile()
+            self.fileHandle = nil
             subject.send(completion: .finished)
         }
     }
@@ -35,6 +31,7 @@ public final class KlineMarketDataFile: MarketDataFile {
         interval: TimeInterval,
         loadAllAtOnce: Bool = false
     ) throws -> AnyPublisher<CandleData, Never> {
+        self.fileHandle?.closeFile()
         self.fileHandle = try FileHandle(forReadingFrom: fileUrl)
         self.symbol = fileHandle?.readLine()?.toString() ?? ""
         self.barInterval = TimeInterval(fileHandle?.readLine()?.toString() ?? "0") ?? 0
@@ -145,11 +142,10 @@ extension FileHandle {
         var data = Data()
         while true {
             let tempData = self.readData(ofLength: 1)
-            if tempData.isEmpty { return nil }
-            if tempData.count == 0 {  // End of file or read error.
-                return nil
+            if tempData.isEmpty {
+                return data.isEmpty ? nil : data
             }
-            if tempData[0] == 10 {  // Newline character in UTF-8
+            if tempData[0] == 10 {
                 break
             }
             data.append(tempData)

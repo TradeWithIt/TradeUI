@@ -12,6 +12,10 @@ public class MarketDataFileProvider: MarketData {
     private var activeSubscriptions: [MarketDataFile] = []
     public var account: Account? = nil
     
+    deinit {
+        activeSubscriptions.removeAll()
+    }
+    
     required public init() {
         let fileManager = FileManager.default
         var directory: URL? = nil
@@ -26,6 +30,13 @@ public class MarketDataFileProvider: MarketData {
             print("Error reading file: \(error)")
         }
         snapshotsDirectory = directory?.appendingPathComponent("Snapshots")
+    }
+    
+    public func pull(url: URL) {
+        guard let file = activeSubscriptions.first(where: { $0.fileUrl == url }) else {
+            return
+        }
+        Task { file.publish() }
     }
     
     public func connect() throws {
@@ -115,6 +126,9 @@ public class MarketDataFileProvider: MarketData {
     public func tradingHour(_ product: any Contract) async throws -> [TradingHour] { return [] }
     
     private func marketDataFile(_ url: URL) throws -> MarketDataFile {
+        if let file = activeSubscriptions.first(where: { $0.fileUrl == url }) {
+            return file
+        }
         var url = url
         let marketDataFile: MarketDataFile
         switch url.pathExtension {
