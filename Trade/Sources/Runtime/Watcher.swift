@@ -19,6 +19,7 @@ public class Watcher: Identifiable {
         OrderedSet((strategy.candles as? [Bar]) ?? [])
     }
     
+    private var marketDataActor = MarketDataActor()
     private var maxCandlesCount: Int {
         let targetIntervals: [TimeInterval] = [900.0, 3600.0, 7200.0]
         let multiplier = targetIntervals.first(where: { $0 > interval }).map { Int($0 / interval) } ?? 1
@@ -64,7 +65,7 @@ public class Watcher: Identifiable {
         self.marketOrder = marketOrder
         
         quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
-        marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
+        marketDataTask = Task { await marketDataActor.setupMarketData(marketData: marketData, fileProvider: fileProvider, watcher: self) }
         fetchTredingHours(marketData: marketData)
     }
     
@@ -168,45 +169,44 @@ public class Watcher: Identifiable {
         }
     }
     
-    private func setupMarketData(marketData: MarketData, fileProvider: CandleFileProvider) async {
-        do {
-            var updatedUserInfo = userInfo
-            updatedUserInfo[MarketDataKey.bufferInfo.rawValue] = interval * Double(maxCandlesCount) * 2.0
-            
-            for await candlesData in try marketData.marketData(
-                contract: contract,
-                interval: interval,
-                userInfo: updatedUserInfo
-            ).values {
-                if Task.isCancelled { break }
-                let isSimulation = marketData is MarketDataFileProvider
+    actor MarketDataActor {
+        func setupMarketData(marketData: MarketData, fileProvider: CandleFileProvider, watcher: Watcher) async {
+            do {
+                var updatedUserInfo = watcher.userInfo
+                updatedUserInfo[MarketDataKey.bufferInfo.rawValue] = watcher.interval * Double(watcher.maxCandlesCount) * 2.0
                 
-                let bars = await updateBars(candlesData.bars, isSimulation: isSimulation)
-                let strat = updateStrategy(bars: bars)
-                
-                if strategy.patternIdentified, let timeOpen = candles.last?.timeOpen, timeOpen != bars.last?.timeOpen {
-                    print("✅ pattern was identified")
-                    saveCandles(fileProvider: fileProvider)
+                for await candlesData in try marketData.marketData(
+                    contract: watcher.contract,
+                    interval: watcher.interval,
+                    userInfo: updatedUserInfo
+                ).values {
+                    if Task.isCancelled { break }
+                    let isSimulation = marketData is MarketDataFileProvider
+                    
+                    let bars = await watcher.updateBars(candlesData.bars, isSimulation: isSimulation)
+                    let strat = watcher.updateStrategy(bars: bars)
+                    
+                    if watcher.strategy.patternIdentified, let timeOpen = watcher.candles.last?.timeOpen, timeOpen != bars.last?.timeOpen {
+                        print("✅ pattern was identified")
+                        watcher.saveCandles(fileProvider: fileProvider)
+                    }
+                    
+                    await MainActor.run { watcher.strategy = strat }
+                    
+                    if isSimulation {
+                        await watcher.enterTradeIfStrategyIsValidated(isSimulation: isSimulation)
+                    }
+                    
+                    await watcher.manageActiveTrade(isSimulation: isSimulation)
+                    
+                    if let fileData = marketData as? MarketDataFileProvider,
+                       let url = watcher.userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
+                        fileData.pull(url: url)
+                    }
                 }
-                
-                await MainActor.run { self.strategy = strat }
-                
-                if isSimulation {
-                    // Simulation at the end of update loop perform trade
-                    await enterTradeIfStrategyIsValidated(isSimulation: isSimulation)
-                }
-                
-                // Manage active positions (in trade)
-                await manageActiveTrade(isSimulation: isSimulation)
-                
-                // If simulation, pull next candle
-                if let fileData = marketData as? MarketDataFileProvider,
-                   let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
-                    fileData.pull(url: url)
-                }
+            } catch {
+                print("Market data stream error: \(error)")
             }
-        } catch {
-            print("Market data stream error: \(error)")
         }
     }
     
