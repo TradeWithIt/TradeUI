@@ -53,7 +53,8 @@ public struct ChartCanvasView: View {
         // Determine visible candle range
         let firstVisibleIndex = max(0, scale.index(forX: frame.minX, size: frame.size))
         let lastVisibleIndex = min(data.count - 1, scale.index(forX: frame.maxX, size: frame.size))
-
+        
+        guard firstVisibleIndex <= lastVisibleIndex else { return }
         for index in firstVisibleIndex...lastVisibleIndex {
             drawCandle(context: &context, kline: data[index], index: index, frame: frame, candleWidth: candleWidth)
         }
