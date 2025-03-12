@@ -19,78 +19,11 @@ public struct StrategyChart: View {
 
     func chart(candles: [Klines]) -> some View {
         ChartView(interval: interval, data: candles, scale: strategy.scale)
-            .chartBackground { scale, frame in
-                drawPhases(strategy.phases, ofCandles: candles, scale: scale, frame: frame)
+            .chartBackground { context, scale, frame in
+                drawPhases(context: &context, strategy.phases, ofCandles: candles, scale: scale, frame: frame)
             }
-            .chartOverlay { scale, frame in
-                // Moving Average shorTermLength: Int = 8
-                Path.quadCurvedPathWithPoints(
-                    points: strategy.shortTermMA.enumerated()
-                        .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
-                    canvas: frame
-                )
-                .stroke(Color.blue)
-                
-                // Resistance  Levels
-                ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
-                    let resistance = strategy.levels.resistance[i]
-                    let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
-                    Path.pathWithPoints(
-                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
-                        canvas: frame
-                    )
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                }
-                
-                // Support Levels
-                ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
-                    let support = strategy.levels.support[i]
-                    let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
-                    Path.pathWithPoints(
-                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
-                        canvas: frame
-                    )
-                    .stroke(Color.red, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                }
-                
-                // Near Short-Term Moving Average Range
-                if let shortTermMA = strategy.shortTermMA.last {
-                    let yRange = scale.y.upperBound - scale.y.lowerBound
-                    let dynamicThreshold = yRange * 0.025
-                    
-                    let upperRange = scale.y(shortTermMA + dynamicThreshold, size: frame.size)
-                    Path.pathWithPoints(
-                        points: [
-                            CGPoint(x: frame.minX, y: upperRange),
-                            CGPoint(x: frame.maxX, y: upperRange),
-                        ],
-                        canvas: frame
-                    )
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                    
-                    let lowerRange = scale.y(shortTermMA - dynamicThreshold, size: frame.size)
-                    Path.pathWithPoints(
-                        points: [
-                            CGPoint(x: frame.minX, y: lowerRange),
-                            CGPoint(x: frame.maxX, y: lowerRange),
-                        ],
-                        canvas: frame
-                    )
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                }
-                
-                // Phase line
-                /*
-                Path.pathWithPoints(
-                    points: strategy.phaseTermMa.enumerated()
-                        .map({ $0.element.toPoint(atTime: candles[$0.offset].timeCenter, scale: scale, canvasSize: frame.size) })
-                        .simplifyLine(epsilon: 38)
-                        .map({ $0.0 })
-                    ,
-                    canvas: frame
-                )
-                .stroke(Color.yellow)
-                 */
+            .chartOverlay { context, scale, frame in
+                drawOverlays(context: &context, strategy: strategy, scale: scale, frame: frame)
             }
     }
     
@@ -102,80 +35,89 @@ public struct StrategyChart: View {
                 data: candles,
                 scale: strategy.supportScale
             )
-            .chartBackground { scale, frame in
-                drawPhases(strategy.supportPhases, ofCandles: candles, scale: scale, frame: frame)
+            .chartBackground { context, scale, frame in
+                drawPhases(context: &context, strategy.supportPhases, ofCandles: candles, scale: scale, frame: frame)
             }
-            .chartOverlay { scale, frame in
-                // Moving Average longTermLength: Int = 24
-                
-                Path.quadCurvedPathWithPoints(
-                    points: strategy.longTermMA.enumerated()
-                        .map({ $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size) }),
-                    canvas: frame
-                )
-                .stroke(Color.purple)
-                
-                // Resistance  Levels
-                ForEach(0 ..< strategy.levels.resistance.count, id: \.self) { i in
-                    let resistance = strategy.levels.resistance[i]
-                    let point = resistance.level.yToPoint(atIndex: resistance.index, scale: scale, canvasSize: frame.size)
-                    Path.pathWithPoints(
-                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
-                        canvas: frame
-                    )
-                    .stroke(Color.green, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.resistance.count), dash: [5, 5]))
-                }
-                
-                // Support Levels
-                ForEach(0 ..< strategy.levels.support.count, id: \.self) { i in
-                    let support = strategy.levels.support[i]
-                    let point = support.level.yToPoint(atIndex: support.index, scale: scale, canvasSize: frame.size)
-                    Path.pathWithPoints(
-                        points: [point, CGPoint(x: frame.maxX, y: point.y)],
-                        canvas: frame
-                    )
-                    .stroke(Color.red, style: StrokeStyle(lineWidth: Double(i + 1) / Double(strategy.levels.support.count), dash: [5, 5]))
-                }
+            .chartOverlay { context, scale, frame in
+                drawSupportOverlays(context: &context, strategy: strategy, scale: scale, frame: frame)
             }
         }
     }
-    
-    private func drawPhases(_ phases: [Phase], ofCandles candles: [Klines], scale: Scale, frame: CGRect) -> some View {
-        ForEach(0 ..< phases.count, id: \.self) { i in
-            let min = candles[phases[i].range].min(by: { (a, b) -> Bool in
-                return a.priceLow < b.priceLow
-            })!.priceLow
-            let max = candles[phases[i].range].max(by: { (a, b) -> Bool in
-                return a.priceHigh < b.priceHigh
-            })!.priceHigh
-            Rectangle()
-                .fill(phaseColor(for: phases[i].type))
-                .frame(
-                    width: Swift.max(
-                        0,
-                        scale.width(
-                            phases[i].range.length,
-                            size: frame.size
-                        )
-                    ),
-                    height: Swift.max(
-                        0,
-                        scale.height(
-                            (max - min),
-                            size: frame.size
-                        )
-                    )
-                )
-                .position(
-                    (min + (max - min) * 0.5).yToPoint(
-                        atIndex: phases[i].range.lowerBound + (phases[i].range.length / 2),
-                        scale: scale,
-                        canvasSize: frame.size
-                    )
-                )
+
+    private func drawPhases(context: inout GraphicsContext, _ phases: [Phase], ofCandles candles: [Klines], scale: Scale, frame: CGRect) {
+        for phase in phases {
+            guard let minPrice = candles[phase.range].map({ $0.priceLow }).min(),
+                  let maxPrice = candles[phase.range].map({ $0.priceHigh }).max() else { continue }
+            
+            let phaseColor = phaseColor(for: phase.type)
+            let rect = CGRect(
+                x: scale.x(phase.range.lowerBound, size: frame.size),
+                y: scale.y(maxPrice, size: frame.size),
+                width: scale.width(phase.range.length, size: frame.size),
+                height: abs(scale.y(maxPrice, size: frame.size) - scale.y(minPrice, size: frame.size))
+            )
+
+            context.fill(Path(rect), with: .color(phaseColor))
         }
     }
-    
+
+    private func drawOverlays(context: inout GraphicsContext, strategy: any Strategy, scale: Scale, frame: CGRect) {
+        var path = Path()
+
+        // Short-Term Moving Average
+        let shortTermPoints = strategy.shortTermMA.enumerated().map {
+            $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size)
+        }
+        path.addLines(shortTermPoints)
+        context.stroke(path, with: .color(.blue))
+
+        // Resistance Levels
+        for resistance in strategy.levels.resistance {
+            drawDashedLine(context: &context, yLevel: resistance.level, index: resistance.index, scale: scale, frame: frame, color: .green)
+        }
+
+        // Support Levels
+        for support in strategy.levels.support {
+            drawDashedLine(context: &context, yLevel: support.level, index: support.index, scale: scale, frame: frame, color: .red)
+        }
+
+        // Near Short-Term Moving Average Range
+        if let lastShortTermMA = strategy.shortTermMA.last {
+            let dynamicThreshold = (scale.y.upperBound - scale.y.lowerBound) * 0.025
+            drawDashedLine(context: &context, yLevel: lastShortTermMA + dynamicThreshold, index: 0, scale: scale, frame: frame, color: .blue)
+            drawDashedLine(context: &context, yLevel: lastShortTermMA - dynamicThreshold, index: 0, scale: scale, frame: frame, color: .blue)
+        }
+    }
+
+    private func drawSupportOverlays(context: inout GraphicsContext, strategy: any Strategy, scale: Scale, frame: CGRect) {
+        var path = Path()
+
+        // Long-Term Moving Average
+        let longTermPoints = strategy.longTermMA.enumerated().map {
+            $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size)
+        }
+        path.addLines(longTermPoints)
+        context.stroke(path, with: .color(.purple))
+
+        // Resistance Levels
+        for (i, resistance) in strategy.levels.resistance.enumerated() {
+            drawDashedLine(context: &context, yLevel: resistance.level, index: resistance.index, scale: scale, frame: frame, color: .green, lineWidth: Double(i + 1))
+        }
+
+        // Support Levels
+        for (i, support) in strategy.levels.support.enumerated() {
+            drawDashedLine(context: &context, yLevel: support.level, index: support.index, scale: scale, frame: frame, color: .red, lineWidth: Double(i + 1))
+        }
+    }
+
+    private func drawDashedLine(context: inout GraphicsContext, yLevel: Double, index: Int, scale: Scale, frame: CGRect, color: Color, lineWidth: Double = 1) {
+        let point = yLevel.yToPoint(atIndex: index, scale: scale, canvasSize: frame.size)
+        var path = Path()
+        path.move(to: CGPoint(x: frame.minX, y: point.y))
+        path.addLine(to: CGPoint(x: frame.maxX, y: point.y))
+        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, dash: [5, 5]))
+    }
+
     private func phaseColor(for type: PhaseType) -> Color {
         switch type {
         case .uptrend:

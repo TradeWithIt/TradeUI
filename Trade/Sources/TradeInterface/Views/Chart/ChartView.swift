@@ -1,7 +1,7 @@
 import SwiftUI
 import TradingStrategy
 
-public struct ChartView<O: View, B: View>: View {
+public struct ChartView: View {
     @State private var labelsVertical: [Double] = []
     @State private var labelsHorizontal: [String] = []
     @State private var scale = Scale()
@@ -12,8 +12,8 @@ public struct ChartView<O: View, B: View>: View {
     public let data: [Klines]
     public let interval: TimeInterval
     public var scaleOriginal: Scale
-    private var canvasOverlay: (_ scale: Scale, _ frame: CGRect) -> O
-    private var canvasBackground: (_ scale: Scale, _ frame: CGRect) -> B
+    private var canvasOverlay: (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void
+    private var canvasBackground: (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void
     
     private var isScaleMoved: Bool {
         scale.x != scaleOriginal.x || scale.y != scaleOriginal.y
@@ -23,8 +23,8 @@ public struct ChartView<O: View, B: View>: View {
         interval: TimeInterval,
         data: [Klines],
         scale: Scale,
-        overlay: @escaping (_ scale: Scale, _ frame: CGRect) -> O,
-        background: @escaping (_ scale: Scale, _ frame: CGRect) -> B
+        overlay: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void = { _, _, _ in },
+        background: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void = { _, _, _ in }
     ) {
         self.data = data
         self.interval = interval
@@ -183,75 +183,23 @@ public struct ChartView<O: View, B: View>: View {
     
     // MARK: Modifiers
     
-    public func chartBackground<Content: View>(@ViewBuilder _ view: @escaping (_ scale: Scale, _ frame: CGRect) -> Content) -> ChartView<O, Content> {
-        ChartView<O, Content>(
+    public func chartBackground(canvasOverlay: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void) -> ChartView {
+        ChartView(
             interval: interval,
             data: data,
             scale: scaleOriginal,
             overlay: canvasOverlay,
-            background: view
-        )
-    }
-    
-    public func chartOverlay<Content: View>(@ViewBuilder _ view: @escaping (_ scale: Scale, _ frame: CGRect) -> Content) -> ChartView<Content, B> {
-        ChartView<Content, B>(
-            interval: interval,
-            data: data,
-            scale: scaleOriginal,
-            overlay: view,
             background: canvasBackground
         )
     }
-}
-
-// MARK: Convinience Initialisers
-
-public extension ChartView where O == EmptyView {
-    init(
-        interval: TimeInterval,
-        data: [Klines],
-        scale: Scale,
-        background: @escaping (_ scale: Scale, _ frame: CGRect) -> B
-    ) {
-        self.init(
+    
+    public func chartOverlay(canvasBackground: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void) -> ChartView {
+        ChartView(
             interval: interval,
             data: data,
-            scale: scale,
-            overlay: { _, _  in EmptyView() },
-            background: background
-        )
-    }
-}
-
-public extension ChartView where B == EmptyView {
-    init(
-        interval: TimeInterval,
-        data: [Klines],
-        scale: Scale,
-        overlay: @escaping (_ scale: Scale, _ frame: CGRect) -> O
-    ) {
-        self.init(
-            interval: interval,
-            data: data,
-            scale: scale,
-            overlay: overlay,
-            background: { _, _ in EmptyView() }
-        )
-    }
-}
-
-public extension ChartView where O == EmptyView, B == EmptyView {
-    init(
-        interval: TimeInterval,
-        data: [Klines],
-        scale: Scale
-    ) {
-        self.init(
-            interval: interval,
-            data: data,
-            scale: scale,
-            overlay: { _, _  in EmptyView() },
-            background: { _, _ in EmptyView() }
+            scale: scaleOriginal,
+            overlay: canvasOverlay,
+            background: canvasBackground
         )
     }
 }
