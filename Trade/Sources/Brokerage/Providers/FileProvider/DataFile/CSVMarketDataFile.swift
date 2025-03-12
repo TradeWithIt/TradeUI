@@ -43,6 +43,7 @@ public final class CSVMarketDataFile: MarketDataFile {
         } else {
             print("End of file reached.")
             fileHandle.closeFile()
+            self.interval = 0
             self.fileHandle = nil
             subject.send(completion: .finished)
         }
