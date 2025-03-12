@@ -90,8 +90,8 @@ public struct ChartView<O: View, B: View>: View {
         DragGesture().onChanged { gesture in
             let scaleX = scaleDrag?.x ?? scaleOriginal.x
             let scaleY = scaleDrag?.y ?? scaleOriginal.y
-            let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
-            let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitiude
+            let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitude
+            let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitude
             
             let barCount = scale.barCount(forLength: xValueChange, size: canvasSize)
             scale = Scale(
@@ -109,7 +109,7 @@ public struct ChartView<O: View, B: View>: View {
         DragGesture().onChanged { gesture in
             guard abs(gesture.translation.width) < abs(gesture.translation.height) else { return }
             let scaleY = scaleDrag?.y ?? scaleOriginal.y
-            let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitiude
+            let yValueChange = (gesture.translation.height / canvasSize.height) * scale.yAmplitude
             let lower = scaleY.lowerBound - yValueChange
             let upper = scaleY.upperBound + yValueChange
             if lower > 0, upper > 0, lower < upper {
@@ -126,7 +126,7 @@ public struct ChartView<O: View, B: View>: View {
         DragGesture().onChanged { gesture in
             guard abs(gesture.translation.width) > abs(gesture.translation.height) else { return }
             let scaleX = scaleDrag?.x ?? scaleOriginal.x
-            let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitiude
+            let xValueChange = (gesture.translation.width / canvasSize.width) * scale.xAmplitude
             let barCount = scale.barCount(forLength: xValueChange, size: canvasSize)
             let lower = scaleX.lowerBound - barCount
             let upper = scaleX.upperBound + barCount
