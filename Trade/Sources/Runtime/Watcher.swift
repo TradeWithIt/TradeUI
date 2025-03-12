@@ -241,7 +241,7 @@ public class Watcher: Identifiable {
         if currentCandles.count > maxCandlesCount {
             currentCandles.removeFirst(currentCandles.count - maxCandlesCount)
         }
-        return Array(currentCandles)
+        return currentCandles.map { $0 }
     }
     
     private func updateStrategy(bars: [Bar]) -> any Strategy {
@@ -250,7 +250,8 @@ public class Watcher: Identifiable {
     
     private func enterTradeIfStrategyIsValidated(isSimulation: Bool) async {
         guard !Task.isCancelled else { return }
-        guard activeTrade == nil else { return }
+        let hasNoActiveTrade = await MainActor.run { activeTrade == nil }
+        guard hasNoActiveTrade else { return }
         let strategy = await MainActor.run { return self.strategy }
         guard strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
         
@@ -263,7 +264,7 @@ public class Watcher: Identifiable {
                 trailStopPrice: initialStopLoss,
                 units: Double(units)
             )
-            activeTrade = trade
+            await MainActor.run { activeTrade = trade }
             print("✅🟤 enter trade: ", trade)
         } else if let account = marketOrder?.account {
             print("✅ enterTradeIfStrategyIsValidated, symbol: \(symbol): intervl: \(interval)")
