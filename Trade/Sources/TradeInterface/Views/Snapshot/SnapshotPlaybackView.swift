@@ -41,11 +41,12 @@ public struct SnapshotPlaybackView: View {
     }
     
     private func runSimulation() {
-        guard let url = node?.url, let information = node?.name.decodeFileName() else { return }
+        guard let url = node?.url else { return }
+        let information = node?.name.decodeFileName()
         do {
             self.watcher = try Watcher(
-                contract: Instrument(type: "", symbol: information.symbol, exchangeId: "", currency: ""),
-                interval: information.interval,
+                contract: Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: ""),
+                interval: information?.interval ?? 60,
                 strategyType: SupriseBarStrategy.self,
                 fileProvider: fileProvider,
                 userInfo: [

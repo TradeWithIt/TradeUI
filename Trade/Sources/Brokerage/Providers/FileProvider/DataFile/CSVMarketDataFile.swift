@@ -7,46 +7,30 @@ public final class CSVMarketDataFile: MarketDataFile {
     private var fileHandle: FileHandle?
     private var symbol: String = ""
     private var barInterval: TimeInterval = 0
-    private var delimiter: String = ","
+    private var interval: TimeInterval = 0
+    private var delimiter: String = ";"
     
     public init(fileUrl: URL) {
         self.fileUrl = fileUrl
     }
-
-    private func detectDelimiter() -> String {
-        guard FileManager.default.fileExists(atPath: fileUrl.path) else {
-            print("Error: File does not exist at \(fileUrl.path)")
-            return ";"
-        }
-        
-        guard let fileHandle = try? FileHandle(forReadingFrom: fileUrl) else {
-            return ";"
-        }
-        defer { fileHandle.closeFile() }
-        
-        if let firstLineData = fileHandle.readLine(),
-           let firstLine = firstLineData.toString() {
-            return firstLine.contains(";") ? ";" : ","
-        }
-        return ";"
-    }
     
     public func publish() {
         guard let fileHandle = fileHandle else { return }
-        
-        if let lineData = fileHandle.readLine(), let line = lineData.toString() {
-            let components = line.split(separator: delimiter).map { String($0) }
+
+        if let lineData = fileHandle.readLine() {
+            let line = lineData.toString()
+            let components = line?.split(separator: delimiter).map { String($0) } ?? []
             guard components.count >= 5,
                   let timestamp = parseTimeInterval(components[0]),
-                  let open = Double(components[1]),
-                  let high = Double(components[2]),
-                  let low = Double(components[3]),
-                  let close = Double(components[4]) else {
+                  let open = Double(components[2]),
+                  let high = Double(components[3]),
+                  let low = Double(components[4]),
+                  let close = Double(components[5]) else {
                 return
             }
-            let volume: Double? = components.count >= 6 ? Double(components[5]) : nil
+            let volume: Double? = components.count >= 7 ? Double(components[6]) : nil
             let bar = Bar(
-                timeOpen: timestamp,
+                timeOpen: interval,
                 interval: barInterval,
                 priceOpen: open,
                 priceHigh: high,
@@ -54,9 +38,10 @@ public final class CSVMarketDataFile: MarketDataFile {
                 priceClose: close,
                 volume: volume
             )
+            interval += barInterval
             subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
         } else {
-            print("End of file reached or error reading line.")
+            print("End of file reached.")
             fileHandle.closeFile()
             self.fileHandle = nil
             subject.send(completion: .finished)
@@ -99,7 +84,6 @@ public final class CSVMarketDataFile: MarketDataFile {
     public func save(strategyName: String, candleData: CandleData) {
         let fileManager = FileManager.default
         let filePath = fileUrl.path
-        self.delimiter = detectDelimiter()
         
         do {
             if !fileManager.fileExists(atPath: filePath) {
@@ -127,8 +111,10 @@ public final class CSVMarketDataFile: MarketDataFile {
             let fileHandle = try FileHandle(forReadingFrom: fileUrl)
             defer { fileHandle.closeFile() }
             
-            _ = fileHandle.readLine() // Skip header
-            let delimiter = detectDelimiter()
+            if let firstLineData = fileHandle.readLine(),
+               let firstLine = firstLineData.toString() {
+                self.delimiter = firstLine.contains(";") ? ";" : ","
+            }
             
             var bars: [Bar] = []
             while let line = fileHandle.readLine()?.toString() {
