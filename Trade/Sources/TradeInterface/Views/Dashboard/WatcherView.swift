@@ -5,14 +5,19 @@ import TradingStrategy
 
 public struct WatcherView: View {
     @Environment(TradeManager.self) private var trades
-    @State var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
-    @Binding var watcher: Watcher?
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
+    @State private var strategy: Strategy?
+    @State private var interval: TimeInterval?
+
+    let watcher: Watcher?
     let showActionButtons: Bool
     let showChart: Bool
 
-    public init(watcher: Binding<Watcher?>, showChart: Bool = true, showActionButtons: Bool = false) {
-        self._watcher = watcher
+    // Timer to fetch updates every second
+    private let updateTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
+
+    public init(watcher: Watcher?, showChart: Bool = true, showActionButtons: Bool = false) {
+        self.watcher = watcher
         self.showChart = showChart
         self.showActionButtons = showActionButtons
     }
@@ -22,21 +27,35 @@ public struct WatcherView: View {
             VStack {
                 HStack {
                     StrategyQuoteView(
-                        watcher: .constant(watcher),
+                        watcher: watcher,
                         showActionButtons: showActionButtons
                     )
                     Spacer(minLength: 0)
-                    StrategyCheckList(strategy: watcher.strategy)
+                    if let strategy {
+                        StrategyCheckList(strategy: strategy)
+                    }
                 }
-                if showChart {
+                if showChart, let strategy, let interval {
                     StrategyChart(
-                        strategy: watcher.strategy,
-                        interval: watcher.interval
+                        strategy: strategy,
+                        interval: interval
                     )
                     .id(watcher.id)
                 }
             }
             .id(watcher.id + "_view")
+            .onReceive(updateTimer) { _ in
+                Task { await fetchWatcherState() }
+            }
         }
+    }
+
+    // MARK: - Async Fetching
+    
+    private func fetchWatcherState() async {
+        guard let watcher else { return }
+        strategy = await watcher.watcherState.getStrategy()
+        interval = watcher.interval
+        isMarketOpen = watcher.tradingHours.isMarketOpen()
     }
 }

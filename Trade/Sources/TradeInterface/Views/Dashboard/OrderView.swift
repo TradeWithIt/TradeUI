@@ -10,7 +10,7 @@ struct OrderView: View {
     @Environment(TradeManager.self) private var trades
     @State private var contractNumber: Int32 = 1
     @State private var stopLoss: Int = 75
-    @Binding var watcher: Watcher?
+    let watcher: Watcher?
     let account: Account?
     var show: Style = .orderEntry
     
@@ -117,32 +117,38 @@ struct OrderView: View {
         VStack {
             HStack(alignment: .top) {
                 Button("Buy Mkt") {
-                    guard let watcher, let bar = watcher.strategy.candles.last else { return }
-                    do {
-                        try trades.market.makeLimitWithTrailingStopOrder(
-                            contract: watcher.contract,
-                            action: .buy,
-                            price: bar.priceHigh,
-                            trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss) / 100.0),
-                            quantity: Double(contractNumber)
-                        )
-                    } catch {
-                        print(error)
+                    Task {
+                        let strategy = await watcher?.watcherState.getStrategy()
+                        guard let contract = watcher?.contract, let bar = strategy?.charts.first?.last else { return }
+                        do {
+                            try trades.market.makeLimitWithTrailingStopOrder(
+                                contract: contract,
+                                action: .buy,
+                                price: bar.priceHigh,
+                                trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss) / 100.0),
+                                quantity: Double(contractNumber)
+                            )
+                        } catch {
+                            print(error)
+                        }
                     }
                 }
                 .buttonStyle(TradingButtonStyle(backgroundColor: .green))
                 Button("Sell Mkt") {
-                    guard let watcher, let bar = watcher.strategy.candles.last else { return }
-                    do {
-                        try trades.market.makeLimitWithTrailingStopOrder(
-                            contract: watcher.contract,
-                            action: .sell,
-                            price: bar.priceLow,
-                            trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss) / 100.0),
-                            quantity: Double(contractNumber)
-                        )
-                    } catch {
-                        print(error)
+                    Task {
+                        let strategy = await watcher?.watcherState.getStrategy()
+                        guard let contract = watcher?.contract, let bar = strategy?.charts.first?.last else { return }
+                        do {
+                            try trades.market.makeLimitWithTrailingStopOrder(
+                                contract: contract,
+                                action: .sell,
+                                price: bar.priceLow,
+                                trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss) / 100.0),
+                                quantity: Double(contractNumber)
+                            )
+                        } catch {
+                            print(error)
+                        }
                     }
                 }
                 .buttonStyle(TradingButtonStyle(backgroundColor: .red))

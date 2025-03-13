@@ -35,7 +35,7 @@ struct TradeApp: App {
         
         WindowGroup("Watcher", for: Watcher.ID.self) { $watcherId in
             if let watcherId = watcherId, let watcher = trades.watchers[watcherId] {
-                WatcherView(watcher: .constant(watcher))
+                WatcherView(watcher: watcher)
                     .navigationTitle("Watcher: \(watcher.displayName)")
                     .environment(trades)
             }

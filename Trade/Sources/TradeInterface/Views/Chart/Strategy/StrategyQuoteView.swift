@@ -10,34 +10,17 @@ public struct StrategyQuoteView: View {
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
-    @Binding var watcher: Watcher
+    
     @State private var isMarketOpen: (isOpen: Bool, timeUntilChange: TimeInterval?) = (false, nil)
+    @State private var quote: Quote?
+    
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     let showActionButtons: Bool
+    let watcher: Watcher
     
-    // Computed properties to get the latest values from `Quote`
-    private var bidPrice: String {
-        formatPrice(watcher.quote?.bidPrice)
-    }
-
-    private var askPrice: String {
-        formatPrice(watcher.quote?.askPrice)
-    }
-
-    private var lastPrice: String {
-        formatPrice(watcher.quote?.lastPrice)
-    }
-
-    private var volume: String {
-        formatPrice(watcher.quote?.volume)
-    }
-    
-    private func formattedTimeInterval(_ interval: TimeInterval?) -> String {
-        guard let interval, interval > 0 else { return "00:00:00" }
-        let hours = Int(interval) / 3600
-        let minutes = (Int(interval) % 3600) / 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    public init(watcher: Watcher, showActionButtons: Bool = false) {
+        self.watcher = watcher
+        self.showActionButtons = showActionButtons
     }
     
     public var body: some View {
@@ -59,13 +42,13 @@ public struct StrategyQuoteView: View {
                     .foregroundColor(isMarketOpen.isOpen ? .green : .red)
                     .frame(width: proxy.size.width / 6.0)
                     
-                    tickView(title: "LAST", value: lastPrice)
+                    tickView(title: "LAST", value: formatPrice(quote?.lastPrice))
                         .frame(width: proxy.size.width / 6.0)
-                    tickView(title: "BID", value: bidPrice)
+                    tickView(title: "BID", value: formatPrice(quote?.bidPrice))
                         .frame(width: proxy.size.width / 6.0)
-                    tickView(title: "ASK", value: askPrice)
+                    tickView(title: "ASK", value: formatPrice(quote?.askPrice))
                         .frame(width: proxy.size.width / 6.0)
-                    tickView(title: "Volume", value: volume)
+                    tickView(title: "Volume", value: formatPrice(quote?.volume))
                         .frame(width: proxy.size.width / 6.0)
                 }
                 .frame(height: proxy.size.height)
@@ -73,25 +56,26 @@ public struct StrategyQuoteView: View {
             .frame(height: 32)
         }
         .padding(.horizontal)
+        .task { await fetchQuote() }
         .onReceive(timer) { _ in
-            var change = isMarketOpen
-            if let time = change.timeUntilChange {
-                change.timeUntilChange = time - 1
-                if Int(time) == 0 {
-                    watcher.fetchTredingHours(marketData: trades.market)
-                    isMarketOpen = watcher.tradingHours.isMarketOpen()
-                    return
-                } else if Int(time) < 0 {
-                    isMarketOpen = watcher.tradingHours.isMarketOpen()
-                    return
-                }
-            }
-            isMarketOpen = change
+            Task { await updateMarketOpenState() }
         }
         .onChange(of: watcher.tradingHours, initial: true) {
-            isMarketOpen = watcher.tradingHours.isMarketOpen()
+            Task { await updateMarketOpenState() }
         }
     }
+    
+    // MARK: - Async Data Fetching
+    
+    private func fetchQuote() async {
+        self.quote = await watcher.watcherState.getQuote()
+    }
+    
+    private func updateMarketOpenState() async {
+        self.isMarketOpen = watcher.tradingHours.isMarketOpen()
+    }
+    
+    // MARK: - Views
     
     func activeAssetsButtons(watcher: Watcher) -> some View {
         HStack {
@@ -104,7 +88,6 @@ public struct StrategyQuoteView: View {
                 Image(systemName: "chart.bar")
                     .aspectRatio(1, contentMode: .fit)
             }
-
             #endif
             Button(action: { watcher.saveCandles(fileProvider: trades.fileProvider) }) {
                 Image(systemName: "square.and.arrow.down")
@@ -148,5 +131,13 @@ public struct StrategyQuoteView: View {
     private func formatPrice(_ value: Double?) -> String {
         guard let value else { return "----.--" }
         return String(format: "%.2f", value)
+    }
+    
+    private func formattedTimeInterval(_ interval: TimeInterval?) -> String {
+        guard let interval, interval > 0 else { return "00:00:00" }
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }

@@ -19,7 +19,7 @@ public struct SnapshotPlaybackView: View {
     public var body: some View {
         Group {
             if watcher != nil {
-                WatcherView(watcher: $watcher)
+                WatcherView(watcher: watcher)
             } else {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle())

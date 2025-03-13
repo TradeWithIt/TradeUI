@@ -2,59 +2,57 @@ import Foundation
 import TradingStrategy
 
 public struct ORBStrategy: Strategy {
-    public let candles: [Klines]
-    public let levels: SupportResistance
-    public let phases: [Phase]
-    public let supportBars: [Klines] = []
-    public let supportPhases: [Phase] = []
-    public let longTermMA: [Double] = []
-    public let shortTermMA: [Double]
-    public var scale: Scale
-    public var supportScale: Scale
+    public let charts: [[Klines]]
+    public let levels: [Level]
+    public let distribution: [[Phase]]
+    public let indicators: [[String: [Double]]]
+    public let resolution: [Scale]
     
     public init(candles: [Klines]) {
         let interval = candles.first?.interval ?? 60
-        // Calculate number of candles for the whole trading day (8 hours of market time)
         let totalTradingSeconds = 8 * 3600.0
         let candleCount = Int(totalTradingSeconds / interval)
         let scale = Scale(data: candles, candlesPerScreen: candleCount)
+        self.charts = [candles]
+        self.resolution = [scale]
         
-        self.candles = candles
-        self.scale = scale
-        self.supportScale = scale
-        self.shortTermMA = candles.exponentialMovingAverage(period: 34)
-        // Compute ORB Levels
+        let shortTermMA = candles.exponentialMovingAverage(period: 34)
+        let vwap = computeVWAP(candles: candles)
+        
+        self.indicators = [[
+            "34 EMA": shortTermMA,
+            "VWAP": vwap
+        ]]
+        
         self.levels = computeORBLevels(candles: candles)
-        
-        // Select ORB period
-        self.phases = computeORBPhase(candles: candles)
+        self.distribution = [computeORBPhase(candles: candles)]
+    }
+
+    public var patternIdentified: Bool {
+        return isAboveORBHigh || isBelowORBLow
     }
     
     public var patternInformation: [String: Bool] {
-        [
+        return [
             "Above ORB High": isAboveORBHigh,
             "Below ORB Low": isBelowORBLow,
-            "Within ORB Range": isWithinORB,
+            "Within ORB Range": !(isAboveORBHigh || isBelowORBLow)
         ]
     }
-    
-    public var patternIdentified: Bool {
-        isAboveORBHigh || isBelowORBLow
-    }
-    
+
     private var isAboveORBHigh: Bool {
-        guard let lastCandle = candles.last, let orh = levels.resistance.sorted(by: { $0.level > $1.level }).first?.level else { return false }
-        return lastCandle.priceClose > orh
+        guard let lastCandle = charts.first?.last else { return false }
+        let highestLevel = levels.max(by: { $0.level < $1.level })?.level
+        return highestLevel.map { lastCandle.priceClose > $0 } ?? false
     }
     
     private var isBelowORBLow: Bool {
-        guard let lastCandle = candles.last, let orl = levels.resistance.sorted(by: { $0.level < $1.level }).first?.level else { return false }
-        return lastCandle.priceClose < orl
+        guard let lastCandle = charts.first?.last else { return false }
+        let lowestLevel = levels.min(by: { $0.level < $1.level })?.level
+        return lowestLevel.map { lastCandle.priceClose < $0 } ?? false
     }
     
-    private var isWithinORB: Bool {
-        !isAboveORBHigh && !isBelowORBLow
-    }
+    // MARK: - Position Manager & Trade Decision
     
     public func unitCount(equity: Double, feePerUnit cost: Double) -> Int {
         let riskPerTrade = equity * 0.01  // Risking 1% per trade
@@ -68,9 +66,24 @@ public struct ORBStrategy: Strategy {
     }
     
     public func shouldExit(entryBar: Klines) -> Bool {
-        guard let lastCandle = candles.last else { return false }
+        guard let lastCandle = charts.first?.last else { return false }
         return lastCandle.priceClose < entryBar.priceClose * 0.98  // Exit if price drops 2%
     }
+}
+
+// MARK: Compute VWAP
+private func computeVWAP(candles: [Klines]) -> [Double] {
+    var cumulativeVWAP: [Double] = []
+    var cumulativeVolume: Double = 0
+    var cumulativePriceVolume: Double = 0
+    
+    for candle in candles {
+        guard let volume = candle.volume else { continue }
+        cumulativeVolume += volume
+        cumulativePriceVolume += ((candle.priceHigh + candle.priceLow + candle.priceClose) / 3) * volume
+        cumulativeVWAP.append(cumulativePriceVolume / cumulativeVolume)
+    }
+    return cumulativeVWAP
 }
 
 // MARK: ORB phases
@@ -93,9 +106,10 @@ private func computeORBPhase(candles: [Klines]) -> [Phase] {
 /// ORB levels, support (red) for day ago, resistance (green) for recent day
 
 private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> [Level] {
-    let marketOpenTime = time.lowerBound
-    let marketCloseTime = time.upperBound
-    let morningCandles = candles.enumerated().filter { $0.element.timeOpen >= marketOpenTime && $0.element.timeOpen < marketCloseTime }
+    let openTime = time.lowerBound
+    let closeTime = time.upperBound
+    guard let lastTime = candles.last?.timeOpen, lastTime >= openTime else { return [] }
+    let morningCandles = candles.enumerated().filter { $0.element.timeOpen >= openTime && $0.element.timeOpen < closeTime }
     guard let highest = morningCandles.max(by: { $0.element.priceHigh < $1.element.priceHigh }),
           let lowest = morningCandles.min(by: { $0.element.priceLow < $1.element.priceLow }) else {
         return []
@@ -124,9 +138,9 @@ private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> [
     ]
 }
 
-private func computeORBLevels(candles: [Klines]) -> SupportResistance {
+private func computeORBLevels(candles: [Klines]) -> [Level] {
     guard let lastBar = candles.last else {
-        return SupportResistance(support: [], resistance: [])
+        return []
     }
     var nyCalendar = Calendar(identifier: .gregorian)
     nyCalendar.timeZone = TimeZone(identifier: "America/New_York")!
@@ -136,10 +150,10 @@ private func computeORBLevels(candles: [Klines]) -> SupportResistance {
     let marketOpenTime = dayForLastBar.timeIntervalSince1970 + (9.5 * 3600)
     let yesterdayOpenTime = yesterdayOfLastBar.timeIntervalSince1970 + (9.5 * 3600)
         
-    let yesterdayLevels = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 3600))
     let todayLevels = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 3600))
-    return SupportResistance(
-        support: yesterdayLevels,
-        resistance: todayLevels
-    )
+    guard todayLevels.isEmpty else {
+        return todayLevels
+    }
+    let yesterdayLevels = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 3600))
+    return yesterdayLevels
 }
