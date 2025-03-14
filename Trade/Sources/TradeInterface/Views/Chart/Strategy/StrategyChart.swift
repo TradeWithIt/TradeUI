@@ -91,7 +91,7 @@ public struct StrategyChart: View {
                 context.stroke(path, with: .color(indicatorColor), lineWidth: 1)
                 
                 if let lastPoint = points.last {
-                    let labelRect = CGRect(x: lastPoint.x + scale.width(3, size: frame.size), y: lastPoint.y - 10, width: 50, height: 20)
+                    let labelRect = CGRect(x: frame.maxX - 50, y: lastPoint.y - 20, width: 50, height: 20)
                     context.draw(
                         Text(name)
                             .font(.caption)

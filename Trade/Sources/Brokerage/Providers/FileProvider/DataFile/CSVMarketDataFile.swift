@@ -15,17 +15,24 @@ public final class CSVMarketDataFile: MarketDataFile {
     }
     
     public func publish() {
-        guard let fileHandle = fileHandle else { return }
+        guard let fileHandle = fileHandle else {
+            subject.send(completion: .finished)
+            return
+        }
 
         if let lineData = fileHandle.readLine() {
             let line = lineData.toString()
             let components = line?.split(separator: delimiter).map { String($0) } ?? []
-            guard components.count >= 5,
+            guard components.count >= 6,
                   let timestamp = parseTimeInterval(components[0]),
                   let open = Double(components[2]),
                   let high = Double(components[3]),
                   let low = Double(components[4]),
                   let close = Double(components[5]) else {
+                Task {
+                    try await Task.sleep(for: .milliseconds(200))
+                    await MainActor.run { publish() }
+                }
                 return
             }
             let volume: Double? = components.count >= 7 ? Double(components[6]) : nil
@@ -41,7 +48,6 @@ public final class CSVMarketDataFile: MarketDataFile {
             interval += barInterval
             subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
         } else {
-            print("End of file reached.")
             fileHandle.closeFile()
             self.interval = 0
             self.fileHandle = nil

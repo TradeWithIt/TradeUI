@@ -55,6 +55,7 @@ public class Watcher: Identifiable {
         self.userInfo = userInfo
         self.strategyType = strategyType
         self.marketOrder = marketOrder
+        print("Initializing strategy of type:", strategyType)
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
         self.quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
         self.marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
@@ -196,7 +197,6 @@ public class Watcher: Identifiable {
                 }
                 
                 await manageActiveTrade(isSimulation: isSimulation)
-                
                 if let fileData = marketData as? MarketDataFileProvider,
                    let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
                     fileData.pull(url: url)
@@ -370,7 +370,7 @@ public class Watcher: Identifiable {
                 )
             }
         }
-        print("❌ Exiting trade at \(activeTrade), lastBar: \(strategy.candles.last), mva: \(strategy.shortTermMA.last ?? 0)")
+        print("❌ Exiting trade at \(activeTrade), lastBar: \(strategy.candles.last)")
     }
     
     // MARK: - Types

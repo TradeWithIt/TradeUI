@@ -153,9 +153,9 @@ public struct ChartView: View {
             var times: [String] = []
             let formatter = DateFormatter()
             var calendar = Foundation.Calendar(identifier: .gregorian)
-            calendar.timeZone = TimeZone(identifier: "UTC")!
+            calendar.timeZone = TimeZone(identifier: "America/New_York")!
             formatter.calendar = calendar
-            formatter.dateFormat = "HH:mm:ss a\ndd.MM"
+            formatter.dateFormat = "HH:mm\ndd.MM"
             
             var index = x.lowerBound
             while index < x.upperBound {

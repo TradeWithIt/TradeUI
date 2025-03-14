@@ -36,7 +36,10 @@ public class MarketDataFileProvider: MarketData {
         guard let file = activeSubscriptions.first(where: { $0.fileUrl == url }) else {
             return
         }
-        Task { file.publish() }
+        Task {
+            try await Task.sleep(for: .milliseconds(5))
+            file.publish()
+        }
     }
     
     public func connect() throws {
