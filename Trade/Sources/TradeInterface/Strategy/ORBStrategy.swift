@@ -24,8 +24,9 @@ public struct ORBStrategy: Strategy {
             "VWAP": vwap
         ]]
         
-        self.levels = computeORBLevels(candles: candles)
-        self.distribution = [computeORBPhase(candles: candles)]
+        let orb = computeORB(candles: candles)
+        self.levels = orb.levels
+        self.distribution = [orb.phases]
     }
 
     public var patternIdentified: Bool {
@@ -36,7 +37,6 @@ public struct ORBStrategy: Strategy {
         return [
             "Above ORB High": isAboveORBHigh,
             "Below ORB Low": isBelowORBLow,
-            "Within ORB Range": !(isAboveORBHigh || isBelowORBLow)
         ]
     }
 
@@ -86,40 +86,40 @@ private func computeVWAP(candles: [Klines]) -> [Double] {
     return cumulativeVWAP
 }
 
-// MARK: ORB phases
-/// ORB phases, support (red) for day ago, resistance (green) for recent day
-private func computeORBPhase(candles: [Klines]) -> [Phase] {
-    guard let lastBar = candles.last else { return [] }
-    var nyCalendar = Calendar(identifier: .gregorian)
-    nyCalendar.timeZone = TimeZone(identifier: "America/New_York")!
-    
-    let dayForLastBar = nyCalendar.startOfDay(for: Date(timeIntervalSince1970: lastBar.timeOpen))
-    let marketOpenTime = dayForLastBar.timeIntervalSince1970 + (9.5 * 3600)
-    
-    let morningCandles = candles.enumerated().filter { $0.element.timeOpen >= marketOpenTime && $0.element.timeOpen < (marketOpenTime + 3600) }
-    let start = morningCandles.first?.offset ?? 0
-    let end = morningCandles.last?.offset ?? 0
-    return [Phase(type: .sideways, range: start...end)]
-}
-
-// MARK: ORB levels
-/// ORB levels, support (red) for day ago, resistance (green) for recent day
-
-private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> [Level] {
+private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> (levels: [Level], phases: [Phase]) {
     let openTime = time.lowerBound
     let closeTime = time.upperBound
-    guard let lastTime = candles.last?.timeOpen, lastTime >= openTime else { return [] }
-    let morningCandles = candles.enumerated().filter { $0.element.timeOpen >= openTime && $0.element.timeOpen < closeTime }
-    guard let highest = morningCandles.max(by: { $0.element.priceHigh < $1.element.priceHigh }),
-          let lowest = morningCandles.min(by: { $0.element.priceLow < $1.element.priceLow }) else {
-        return []
+    guard let lastTime = candles.last?.timeOpen, lastTime >= openTime else { return ([], []) }
+    
+    var highest: EnumeratedSequence<[Klines]>.Element?
+    var lowest: EnumeratedSequence<[Klines]>.Element?
+    var start: Int?
+    var end: Int?
+    
+    for candle in candles.enumerated().reversed() {
+        if candle.element.timeOpen < openTime { break }  // Stop if we go past the time range
+        if candle.element.timeOpen >= closeTime { continue } // Skip candles after the range
+        
+        if highest == nil || candle.element.priceHigh > highest!.element.priceHigh {
+            highest = candle
+        }
+        if lowest == nil || candle.element.priceLow < lowest!.element.priceLow {
+            lowest = candle
+        }
+        
+        if end == nil { end = candle.offset }
+        start = candle.offset
+    }
+    
+    guard let highest, let lowest, let phaseStart = start, let phaseEnd = end else {
+        return ([], [])
     }
     
     let high = highest.element.priceHigh
     let low = lowest.element.priceLow
     let mid = (high + low) / 2
     
-    return [
+    let levels = [
         Level(
             index: highest.offset,
             time: highest.element.timeOpen,
@@ -136,10 +136,14 @@ private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> [
             touches: [Touch(index: lowest.offset, time: lowest.element.timeOpen, closePrice: low)]
         ),
     ]
+    
+    let phase = [Phase(type: .sideways, range: phaseStart...phaseEnd)]
+    
+    return (levels, phase)
 }
 
-private func computeORBLevels(candles: [Klines]) -> [Level] {
-    guard let lastBar = candles.last else { return [] }
+private func computeORB(candles: [Klines]) -> (levels: [Level], phases: [Phase]) {
+    guard let lastBar = candles.last else { return ([], []) }
 
     var nyCalendar = Calendar(identifier: .gregorian)
     nyCalendar.timeZone = TimeZone(identifier: "America/New_York")!
@@ -153,19 +157,19 @@ private func computeORBLevels(candles: [Klines]) -> [Level] {
 
     // **Prioritize 30-Minute ORB**
     let thirtyMinuteORB = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 1800))
-    guard thirtyMinuteORB.isEmpty else { return thirtyMinuteORB }
+    guard thirtyMinuteORB.levels.isEmpty else { return thirtyMinuteORB }
 
     // **If 30-Minute ORB is not found, check 60-Minute ORB**
     let sixtyMinuteORB = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 3600))
-    guard sixtyMinuteORB.isEmpty else { return sixtyMinuteORB }
+    guard sixtyMinuteORB.levels.isEmpty else { return sixtyMinuteORB }
 
     // **If neither exists, check Afternoon ORB**
     let afternoonORB = computeORBLevels(candles: candles, time: afternoonORBStart..<(afternoonORBStart + 1800))
-    guard afternoonORB.isEmpty else { return afternoonORB }
+    guard afternoonORB.levels.isEmpty else { return afternoonORB }
 
     // **Ensure previous day's ORB persists until 9:30 AM next day**
     let yesterdayThirtyMinuteORB = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 1800))
-    guard yesterdayThirtyMinuteORB.isEmpty else { return yesterdayThirtyMinuteORB }
+    guard yesterdayThirtyMinuteORB.levels.isEmpty else { return yesterdayThirtyMinuteORB }
 
     let yesterdaySixtyMinuteORB = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 3600))
     return yesterdaySixtyMinuteORB
