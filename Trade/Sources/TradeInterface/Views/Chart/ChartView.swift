@@ -153,15 +153,17 @@ public struct ChartView: View {
             var times: [String] = []
             let formatter = DateFormatter()
             var calendar = Foundation.Calendar(identifier: .gregorian)
-            calendar.timeZone = TimeZone(identifier: "America/New_York")!
+            let timezone = TimeZone(identifier: "America/New_York")!
+            calendar.timeZone = timezone
             formatter.calendar = calendar
-            formatter.dateFormat = "HH:mm\ndd.MM"
+            formatter.dateFormat = "HH:mm\ndd.MM.yy"
+            formatter.timeZone = timezone
             
             var index = x.lowerBound
             while index < x.upperBound {
                 guard index >= 0, data.count > index else { break }
-                let data = Date(timeIntervalSince1970: data[index].timeOpen)
-                times.append(formatter.string(from: data))
+                let date = Date(timeIntervalSince1970: data[index].timeOpen)
+                times.append(formatter.string(from: date))
                 index += scale.xGuideStep
             }
             withAnimation { labelsHorizontal = times }

@@ -78,10 +78,10 @@ public struct StrategyChart: View {
         scale: Scale,
         frame: CGRect
     ) {
-        var path = Path()
         for (index, (name, values)) in indicators.enumerated() {
             let hue = filteredHue(index: index, total: indicators.count)
-            let indicatorColor = Color(hue: hue, saturation: 0.8, brightness: 0.9)
+            let indicatorColor = Color(hue: hue, saturation: 1, brightness: 1)
+            var path = Path()
             let points = values.enumerated().compactMap {
                 let point = $0.element.yToPoint(atIndex: $0.offset, scale: scale, canvasSize: frame.size)
                 return frame.contains(point) ? point : nil
@@ -96,8 +96,8 @@ public struct StrategyChart: View {
                         Text(name)
                             .font(.caption)
                             .fontWeight(.semibold)
-                            .foregroundColor(indicatorColor),
-                        in: labelRect
+                            .foregroundColor(indicatorColor)
+                        ,in: labelRect
                     )
                 }
             }
@@ -137,8 +137,16 @@ public struct StrategyChart: View {
     }
     
     private func filteredHue(index: Int, total: Int) -> Double {
-        let availableHues: [Double] = [30, 60, 180, 210, 240, 270] // Avoid 0 (red) and 120 (green)
-        return availableHues[index % availableHues.count] / 360.0
+        let neonHues: [Double] = [
+            200,  // Electric Cyan
+            315,  // Hot Pink
+            130,  // Neon Lime Green
+            275,  // Electric Violet
+            55,   // Neon Yellow
+            25    // Hot Orange
+        ]
+        
+        return neonHues[index % neonHues.count] / 360.0
     }
 
     private func phaseColor(for type: PhaseType) -> Color {

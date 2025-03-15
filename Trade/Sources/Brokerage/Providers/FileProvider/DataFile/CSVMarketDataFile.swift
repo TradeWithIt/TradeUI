@@ -37,7 +37,7 @@ public final class CSVMarketDataFile: MarketDataFile {
             }
             let volume: Double? = components.count >= 7 ? Double(components[6]) : nil
             let bar = Bar(
-                timeOpen: interval,
+                timeOpen: timestamp,
                 interval: barInterval,
                 priceOpen: open,
                 priceHigh: high,

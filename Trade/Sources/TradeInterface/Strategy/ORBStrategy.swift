@@ -139,21 +139,34 @@ private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> [
 }
 
 private func computeORBLevels(candles: [Klines]) -> [Level] {
-    guard let lastBar = candles.last else {
-        return []
-    }
+    guard let lastBar = candles.last else { return [] }
+
     var nyCalendar = Calendar(identifier: .gregorian)
     nyCalendar.timeZone = TimeZone(identifier: "America/New_York")!
-    
+
     let dayForLastBar = nyCalendar.startOfDay(for: Date(timeIntervalSince1970: lastBar.timeOpen))
     let yesterdayOfLastBar = nyCalendar.date(byAdding: .day, value: -1, to: dayForLastBar) ?? dayForLastBar
-    let marketOpenTime = dayForLastBar.timeIntervalSince1970 + (9.5 * 3600)
-    let yesterdayOpenTime = yesterdayOfLastBar.timeIntervalSince1970 + (9.5 * 3600)
-        
-    let todayLevels = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 3600))
-    guard todayLevels.isEmpty else {
-        return todayLevels
-    }
-    let yesterdayLevels = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 3600))
-    return yesterdayLevels
+
+    let marketOpenTime = dayForLastBar.timeIntervalSince1970 + (9.5 * 3600) // 9:30 AM EST
+    let yesterdayOpenTime = yesterdayOfLastBar.timeIntervalSince1970 + (9.5 * 3600) // 9:30 AM EST
+    let afternoonORBStart = dayForLastBar.timeIntervalSince1970 + (14.5 * 3600)  // 2:30 PM EST
+
+    // **Prioritize 30-Minute ORB**
+    let thirtyMinuteORB = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 1800))
+    guard thirtyMinuteORB.isEmpty else { return thirtyMinuteORB }
+
+    // **If 30-Minute ORB is not found, check 60-Minute ORB**
+    let sixtyMinuteORB = computeORBLevels(candles: candles, time: marketOpenTime..<(marketOpenTime + 3600))
+    guard sixtyMinuteORB.isEmpty else { return sixtyMinuteORB }
+
+    // **If neither exists, check Afternoon ORB**
+    let afternoonORB = computeORBLevels(candles: candles, time: afternoonORBStart..<(afternoonORBStart + 1800))
+    guard afternoonORB.isEmpty else { return afternoonORB }
+
+    // **Ensure previous day's ORB persists until 9:30 AM next day**
+    let yesterdayThirtyMinuteORB = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 1800))
+    guard yesterdayThirtyMinuteORB.isEmpty else { return yesterdayThirtyMinuteORB }
+
+    let yesterdaySixtyMinuteORB = computeORBLevels(candles: candles, time: yesterdayOpenTime..<(yesterdayOpenTime + 3600))
+    return yesterdaySixtyMinuteORB
 }
