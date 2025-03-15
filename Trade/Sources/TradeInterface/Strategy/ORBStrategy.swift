@@ -18,7 +18,7 @@ public struct ORBStrategy: Strategy {
         
         self.indicators = [[
             "34 EMA": candles.exponentialMovingAverage(period: 34),
-            "VWAP": computeVWAP(candles: candles)
+            "VWAP": candles.computeVWAP()
         ]]
         
         let orb = computeORB(candles: candles)
@@ -66,21 +66,6 @@ public struct ORBStrategy: Strategy {
         guard let lastCandle = charts.first?.last else { return false }
         return lastCandle.priceClose < entryBar.priceClose * 0.98  // Exit if price drops 2%
     }
-}
-
-// MARK: Compute VWAP
-private func computeVWAP(candles: [Klines]) -> [Double] {
-    var cumulativeVWAP: [Double] = []
-    var cumulativeVolume: Double = 0
-    var cumulativePriceVolume: Double = 0
-    
-    for candle in candles {
-        guard let volume = candle.volume else { continue }
-        cumulativeVolume += volume
-        cumulativePriceVolume += ((candle.priceHigh + candle.priceLow + candle.priceClose) / 3) * volume
-        cumulativeVWAP.append(cumulativePriceVolume / cumulativeVolume)
-    }
-    return cumulativeVWAP
 }
 
 private func computeORBLevels(candles: [Klines], time: Range<TimeInterval>) -> (levels: [Level], phases: [Phase]) {
