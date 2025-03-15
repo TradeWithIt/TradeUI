@@ -5,7 +5,9 @@ import Runtime
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
+    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = ""
     @Environment(TradeManager.self) private var trades
+    @EnvironmentObject var strategyRegistry: StrategyRegistry
     
     @State private var viewModel = ViewModel()
     @State private var account: Account?
@@ -14,18 +16,25 @@ struct DashboardView: View {
     @State private var interval: TimeInterval = 300
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
+    private var selectedStrategyBinding: Binding<String> {
+        Binding(
+            get: { selectedStrategyName },
+            set: { value, transaction in
+                selectedStrategyName = value
+        })
+    }
+    
     var body: some View {
         NavigationSplitView(
             sidebar: { sidebar },
             detail: { detail }
         )
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup {
                 Button(action: { showTradeList.toggle() }) {
                     Label("Trade History", systemImage: "externaldrive")
                 }
-            }
-            ToolbarItem(placement: .primaryAction) {
+                StrategyPicker(selectedStrategyName: selectedStrategyBinding)
                 Button(action: { showIntervalPicker.toggle() }) {
                     IntervalLabelView(interval: interval)
                 }
@@ -131,6 +140,10 @@ struct DashboardView: View {
     
     private func marketData(contract: any Contract, interval: TimeInterval) {
         do {
+            guard let steategyType = strategyRegistry.strategy(forName: selectedStrategyName) else {
+                print("🔴 Failed to find strategy \(selectedStrategyName)")
+                return
+            }
             let asset = Asset(
                 instrument: Instrument(
                     type: contract.type,
@@ -141,7 +154,7 @@ struct DashboardView: View {
                 interval: interval
             )
             watchedAssets.insert(asset)
-            try trades.marketData(contract: contract, interval: interval)
+            try trades.marketData(contract: contract, interval: interval, strategyType: steategyType)
         } catch {
             print("🔴 Failed to subscribe IB market data with error:", error)
         }

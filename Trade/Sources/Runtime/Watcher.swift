@@ -11,8 +11,6 @@ public class Watcher: Identifiable {
     public private(set) var watcherState: WatcherStateActor
     
     private let userInfo: [String: Any]
-    private let strategyType: Strategy.Type
-    
     private var maxCandlesCount: Int {
         let targetIntervals: [TimeInterval] = [900.0, 3600.0, 7200.0]
         let multiplier = targetIntervals.first(where: { $0 > interval }).map { Int($0 / interval) } ?? 1
@@ -22,6 +20,7 @@ public class Watcher: Identifiable {
     public var symbol: String { contract.symbol }
     public var id: String { "\(contract.label):\(interval)" }
     public var displayName: String { "\(symbol): \(interval.formatCandleTimeInterval())" }
+    public let strategyType: Strategy.Type
     
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?

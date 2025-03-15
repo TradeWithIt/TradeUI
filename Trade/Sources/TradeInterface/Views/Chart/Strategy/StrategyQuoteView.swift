@@ -7,6 +7,7 @@ import TradingStrategy
 public struct StrategyQuoteView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @Environment(TradeManager.self) private var trades
+    @EnvironmentObject var strategyRegistry: StrategyRegistry
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
@@ -30,26 +31,31 @@ public struct StrategyQuoteView: View {
             }
             GeometryReader { proxy in
                 HStack(spacing: 0) {
-                    Text("\(watcher.contract.symbol):\(watcher.interval.intervalString)")
-                        .font(.headline)
+                    Text(strategyRegistry.strategyName(for: watcher.strategyType) ?? "Unknown")
+                        .font(.subheadline)
                         .foregroundColor(.primary)
-                        .frame(width: proxy.size.width / 6.0)
+                        .frame(width: proxy.size.width / 7.0)
+                    
+                    Text("\(watcher.contract.symbol):\(watcher.interval.intervalString)")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .frame(width: proxy.size.width / 7.0)
                     
                     tickView(
                         title: isMarketOpen.isOpen ? "Open for" : "Closed for",
                         value: formattedTimeInterval(isMarketOpen.timeUntilChange)
                     )
                     .foregroundColor(isMarketOpen.isOpen ? .green : .red)
-                    .frame(width: proxy.size.width / 6.0)
+                    .frame(width: proxy.size.width / 7.0)
                     
                     tickView(title: "LAST", value: formatPrice(quote?.lastPrice))
-                        .frame(width: proxy.size.width / 6.0)
+                        .frame(width: proxy.size.width / 7.0)
                     tickView(title: "BID", value: formatPrice(quote?.bidPrice))
-                        .frame(width: proxy.size.width / 6.0)
+                        .frame(width: proxy.size.width / 7.0)
                     tickView(title: "ASK", value: formatPrice(quote?.askPrice))
-                        .frame(width: proxy.size.width / 6.0)
+                        .frame(width: proxy.size.width / 7.0)
                     tickView(title: "Volume", value: formatPrice(quote?.volume))
-                        .frame(width: proxy.size.width / 6.0)
+                        .frame(width: proxy.size.width / 7.0)
                 }
                 .frame(height: proxy.size.height)
             }

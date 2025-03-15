@@ -5,6 +5,7 @@ import Persistence
 import NIOConcurrencyHelpers
 import Combine
 import TradeWithIt
+import TradingStrategy
 
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
@@ -72,16 +73,15 @@ import TradeWithIt
         }
     }
     
-    public func marketData(contract: any Contract, interval: TimeInterval) throws {
+    @MainActor
+    public func marketData<T: Strategy>(contract: any Contract, interval: TimeInterval, strategyType: T.Type) throws {
         let assetId = "\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else { return }
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
-                //SupriseBarStrategy.self
-                //ORBStrategy
-                strategyType: SupriseBarStrategy.self,
+                strategyType: strategyType,
                 market: market,
                 fileProvider: fileProvider
             )

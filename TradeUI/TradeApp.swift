@@ -1,16 +1,23 @@
 import SwiftUI
 import TradeInterface
 import Runtime
+import TradeWithIt
 
 @main
 struct TradeApp: App {
     @State private var trades = TradeManager()
+    
+    init() {
+        StrategyRegistry.shared.register(strategyType: ORBStrategy.self, name: "ORB")
+        StrategyRegistry.shared.register(strategyType: SupriseBarStrategy.self, name: "Suprise Bar")
+    }
     
     var body: some Scene {
         #if os(macOS)
         MenuBarExtra {
             MenuBarContent()
                 .environment(trades)
+                .environmentObject(StrategyRegistry.shared)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width
@@ -28,6 +35,7 @@ struct TradeApp: App {
         Window(Bundle.main.displayName, id: "main") {
             ContentView()
                 .environment(trades)
+                .environmentObject(StrategyRegistry.shared)
                 .onAppear {
                     trades.initializeSockets()
                 }
@@ -38,6 +46,7 @@ struct TradeApp: App {
                 WatcherView(watcher: watcher)
                     .navigationTitle("Watcher: \(watcher.displayName)")
                     .environment(trades)
+                    .environmentObject(StrategyRegistry.shared)
             }
         }
         
@@ -45,6 +54,7 @@ struct TradeApp: App {
             if let node = snapshot?.file {
                 SnapshotView(node: node, fileProvider: trades.fileProvider)
                     .environment(trades)
+                    .environmentObject(StrategyRegistry.shared)
             }
         }
         
@@ -52,6 +62,7 @@ struct TradeApp: App {
             if let node = snapshot?.file {
                 SnapshotPlaybackView(node: node, fileProvider: trades.fileProvider)
                     .environment(trades)
+                    .environmentObject(StrategyRegistry.shared)
             }
         }
         
@@ -59,6 +70,7 @@ struct TradeApp: App {
         WindowGroup {
             ContentView()
                 .environment(trades)
+                .environmentObject(StrategyRegistry.shared)
                 .onAppear {
                     trades.initializeSockets()
                 }

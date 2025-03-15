@@ -3,13 +3,15 @@ import Runtime
 import Brokerage
 import TradingStrategy
 import TradeWithIt
+import SwiftUIComponents
 
 public struct SnapshotView: View {
+    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = ""
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var strategyRegistry: StrategyRegistry
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
-    @State private var selectedStrategyType: String = "SupriseBarStrategy"
     
     let node: FileSnapshotsView.FileNode?
     let fileProvider: CandleFileProvider
@@ -19,10 +21,18 @@ public struct SnapshotView: View {
         self.fileProvider = fileProvider
     }
     
+    private var selectedStrategyBinding: Binding<String> {
+        Binding(
+            get: { selectedStrategyName },
+            set: { value, transaction in
+                selectedStrategyName = value
+        })
+    }
+    
     public var body: some View {
         Group {
             VStack {
-                strategyPicker
+                StrategyPicker(selectedStrategyName: selectedStrategyBinding, action: loadData(_:))
                 if let strategy {
                     VStack {
                         StrategyCheckList(strategy: strategy)
@@ -31,6 +41,10 @@ public struct SnapshotView: View {
                 } else {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
+                        .onAppear {
+                            guard selectedStrategyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                            selectedStrategyName = strategyRegistry.defaultStrategyName ?? ""
+                        }
                 }
             }
         }
@@ -47,25 +61,6 @@ public struct SnapshotView: View {
             }.padding()
             #endif
         }
-    }
-    
-    private var strategyPicker: some View {
-        Picker("Strategy", selection: $selectedStrategyType) {
-            Text("ORBStrategy").tag(String(describing: ORBStrategy.self))
-            Text("SupriseBarStrategy").tag(String(describing: SupriseBarStrategy.self))
-        }
-        .pickerStyle(.automatic)
-        .onChange(of: selectedStrategyType, initial: true) {
-            switch selectedStrategyType {
-            case "ORBStrategy":
-                loadData(ORBStrategy.self)
-            case "SupriseBarStrategy":
-                loadData(SupriseBarStrategy.self)
-            default:
-                break
-            }
-        }
-        .padding()
     }
     
     private func loadData(_ strat: Strategy.Type) {
