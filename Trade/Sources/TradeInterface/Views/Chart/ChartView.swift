@@ -45,14 +45,8 @@ public struct ChartView: View {
         .overlay(alignment: .topLeading) {
             IntervalLabelView(interval: interval, backgroundColor: Color.black.opacity(0.7))
         }
-        .overlay(alignment: .bottomTrailing) {
-            Text("Reset")
-                .minimumScaleFactor(0.01)
-                .lineLimit(1)
-                .frame(width: 80, height: 50)
-                .foregroundColor(isScaleMoved ? Color.yellow.opacity(0.6) : Color.yellow.opacity(0.2))
-                .contentShape(Rectangle())
-                .onTapGesture(perform: resetScales)
+        .overlay(alignment: .bottomLeading) {
+            resetButton
         }
         .onChange(of: data.last?.timeOpen, initial: true) {
             if !isManuallyDisplaced {
@@ -62,6 +56,24 @@ public struct ChartView: View {
         .onChange(of: scaleOriginal) {
             guard !isManuallyDisplaced else { return }
             resetScales()
+        }
+    }
+    
+    @ViewBuilder
+    private var resetButton: some View {
+        if isScaleMoved {
+            Text("Reset")
+                .minimumScaleFactor(0.01)
+                .lineLimit(1)
+                .frame(width: 80, height: 50)
+                .foregroundColor(Color.white)
+                .background {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.black.opacity(0.7))
+                }
+                .contentShape(Rectangle())
+                .onTapGesture(perform: resetScales)
+                .padding()
         }
     }
     

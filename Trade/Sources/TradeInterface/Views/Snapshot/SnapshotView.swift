@@ -6,7 +6,7 @@ import TradeWithIt
 import SwiftUIComponents
 
 public struct SnapshotView: View {
-    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = ""
+    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = "ORB"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var strategyRegistry: StrategyRegistry

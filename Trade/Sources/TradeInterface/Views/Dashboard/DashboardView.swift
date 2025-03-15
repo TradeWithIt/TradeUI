@@ -5,7 +5,7 @@ import Runtime
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
-    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = ""
+    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = "ORB"
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     

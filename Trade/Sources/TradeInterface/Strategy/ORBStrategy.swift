@@ -16,12 +16,9 @@ public struct ORBStrategy: Strategy {
         self.charts = [candles]
         self.resolution = [scale]
         
-        let shortTermMA = candles.exponentialMovingAverage(period: 34)
-        let vwap = computeVWAP(candles: candles)
-        
         self.indicators = [[
-            "34 EMA": shortTermMA,
-            "VWAP": vwap
+            "34 EMA": candles.exponentialMovingAverage(period: 34),
+            "VWAP": computeVWAP(candles: candles)
         ]]
         
         let orb = computeORB(candles: candles)
