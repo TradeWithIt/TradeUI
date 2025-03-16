@@ -6,6 +6,8 @@ import TradingStrategy
 
 public struct StrategyQuoteView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
+    @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
+    @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     #if os(macOS)
@@ -89,30 +91,27 @@ public struct StrategyQuoteView: View {
     func watcherSettings(watcher: Watcher) -> some View {
         HStack {
             Checkbox(label: "Auto Entry", checked: watcher.isTradeEntryEnabled)
-                .foregroundColor(watcher.isTradeEntryEnabled ? .green : .gray)
                 .onTapGesture { watcher.isTradeEntryEnabled.toggle() }
             Divider()
             Checkbox(label: "Auto Exit", checked: watcher.isTradeExitEnabled)
-                .foregroundColor(watcher.isTradeExitEnabled ? .green : .gray)
                 .onTapGesture { watcher.isTradeExitEnabled.toggle() }
             Divider()
             Checkbox(label: "Entry Alert", checked: watcher.isTradeEntryNotificationEnabled)
-                .foregroundColor(watcher.isTradeEntryNotificationEnabled ? .green : .gray)
                 .onTapGesture { watcher.isTradeEntryNotificationEnabled.toggle() }
             Divider()
             Checkbox(label: "Exit Alert", checked: watcher.isTradeExitNotificationEnabled)
-                .foregroundColor(watcher.isTradeExitNotificationEnabled ? .green : .gray)
                 .onTapGesture { watcher.isTradeExitNotificationEnabled.toggle() }
             Spacer(minLength: 0)
             Divider()
             Divider()
             Spacer(minLength: 0)
-            Checkbox(label: "Sound", checked: true)
-                .foregroundColor(.blue)
+            Checkbox(label: "Sound", checked: alertSoundEnabled)
+                .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
             Divider()
-            Checkbox(label: "Message", checked: true)
-                .foregroundColor(.blue)
+            Checkbox(label: "Message", checked: alertMessageEnabled)
+                .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
         }
+        .foregroundColor(.gray)
         .frame(height: 12)
     }
     

@@ -9,20 +9,24 @@ public struct TradingHour: Equatable {
 public extension [TradingHour] {
     func isMarketOpen() -> (isOpen: Bool, timeUntilChange: TimeInterval?) {
         let now = Date()
-        var earliestOpenTime: TimeInterval? = nil
+        var nextMarketEvent: TimeInterval? = nil
+        var isCurrentlyOpen = false
+        
         for session in self where session.status == "OPEN" {
-            if now >= session.open && now <= session.close {
-                return (true, session.close.timeIntervalSince(now))
+            if session.open <= now && now <= session.close {
+                isCurrentlyOpen = true
+                nextMarketEvent = session.close.timeIntervalSince(now)
+                break
             }
             
             if now < session.open {
                 let timeUntilOpen = session.open.timeIntervalSince(now)
-                if earliestOpenTime == nil || timeUntilOpen < earliestOpenTime! {
-                    earliestOpenTime = timeUntilOpen
+                if nextMarketEvent == nil || timeUntilOpen < nextMarketEvent! {
+                    nextMarketEvent = timeUntilOpen
                 }
             }
         }
         
-        return (false, earliestOpenTime)
+        return (isCurrentlyOpen, nextMarketEvent)
     }
 }
