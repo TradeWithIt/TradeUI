@@ -22,6 +22,11 @@ public class Watcher: Identifiable {
     public var displayName: String { "\(symbol): \(interval.formatCandleTimeInterval())" }
     public let strategyType: Strategy.Type
     
+    public var isTradeEntryEnabled: Bool = false
+    public var isTradeExitEnabled: Bool = false
+    public var isTradeEntryNotificationEnabled: Bool = true
+    public var isTradeExitNotificationEnabled: Bool = true
+    
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
     private var tradeTask: Task<Void, Never>?
@@ -300,8 +305,6 @@ public class Watcher: Identifiable {
                 entrySnapshot: strategy.candles.map { Candle(from: $0) },
                 exitSnapshot: nil
             )
-            
-            PersistenceManager.shared.saveTrade(trade)
         }
     }
     
@@ -322,8 +325,13 @@ public class Watcher: Identifiable {
         // Did not enter trade, as there is currently pending trade
         guard hasNoActiveTrade else { return }
         await watcherState.updateActiveTrade(trade)
-        do {
+        
+        if isTradeEntryNotificationEnabled {
+            // TODO: Notify
             print("✅✅ enter trade: ", trade)
+        }
+        guard isTradeEntryEnabled else { return }
+        do {
             try marketOrder?.makeLimitWithTrailingStopOrder(
                 contract: contract,
                 action: trade.entryBar.isLong ? .buy : .sell,
@@ -339,9 +347,20 @@ public class Watcher: Identifiable {
     private func manageActiveTrade(isSimulation: Bool) async {
         guard !Task.isCancelled else { return }
         let strategy = await watcherState.getStrategy()
-        guard let activeTrade = await watcherState.getActiveTrade(),
-                      activeTrade.entryBar.timeOpen != strategy.candles.last?.timeOpen else { return }
+        
+        guard
+            let activeTrade = await watcherState.getActiveTrade(),
+            let recentBar = strategy.candles.last,
+            activeTrade.entryBar.timeOpen != recentBar.timeOpen
+        else { return }
+        
         guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
+        
+        if isTradeExitNotificationEnabled {
+            // TODO: Notify Exit
+            print("❌ Exiting trade at \(activeTrade), lastBar: \(recentBar)")
+        }
+        guard isTradeExitEnabled else { return }
         
         if isSimulation {
             await watcherState.updateActiveTrade(nil)
@@ -359,17 +378,7 @@ public class Watcher: Identifiable {
             } catch {
                 print("Something went wrong while exiting trade: \(error)")
             }
-            
-            Task {
-                PersistenceManager.shared.updateTradeExit(
-                    symbol: contract.symbol,
-                    exitPrice: activeTrade.entryBar.priceClose,
-                    buyingPower: account.buyingPower,
-                    exitSnapshot: strategy.candles.map { Candle(from: $0) }
-                )
-            }
         }
-        print("❌ Exiting trade at \(activeTrade), lastBar: \(strategy.candles.last)")
     }
     
     // MARK: - Types

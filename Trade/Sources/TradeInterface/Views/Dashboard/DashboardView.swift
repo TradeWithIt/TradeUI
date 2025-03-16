@@ -131,7 +131,7 @@ struct DashboardView: View {
     var charts: some View {
         VStack {
             ForEach(trades.sortedWatchers(), id: \.id) { watcher in
-                WatcherView(watcher: watcher, showChart: false, showActionButtons: true)
+                WatcherView(watcher: watcher, showChart: false, showActions: true)
                 Divider()
             }
         }

@@ -10,16 +10,16 @@ public struct WatcherView: View {
     @State private var interval: TimeInterval?
 
     let watcher: Watcher?
-    let showActionButtons: Bool
+    let showActions: Bool
     let showChart: Bool
 
     // Timer to fetch updates every second
     private let updateTimer = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
 
-    public init(watcher: Watcher?, showChart: Bool = true, showActionButtons: Bool = false) {
+    public init(watcher: Watcher?, showChart: Bool = true, showActions: Bool = false) {
         self.watcher = watcher
         self.showChart = showChart
-        self.showActionButtons = showActionButtons
+        self.showActions = showActions
     }
 
     public var body: some View {
@@ -28,7 +28,7 @@ public struct WatcherView: View {
                 HStack {
                     StrategyQuoteView(
                         watcher: watcher,
-                        showActionButtons: showActionButtons
+                        showActions: showActions
                     )
                     Spacer(minLength: 0)
                     if let strategy {
