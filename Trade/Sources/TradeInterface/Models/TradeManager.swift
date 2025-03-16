@@ -6,6 +6,7 @@ import NIOConcurrencyHelpers
 import Combine
 import TradeWithIt
 import TradingStrategy
+import OrderedCollections
 
 @Observable public class TradeManager {
     private let lock: NIOLock = NIOLock()
@@ -26,12 +27,10 @@ import TradingStrategy
         }
     }
     
-    public func watchersGroups() -> [TradeAggregator: [Watcher]] {
+    public func watchersGroups() -> OrderedDictionary<TradeAggregator, [Watcher]> {
         return lock.withLock {
-            // Group watchers by their TradeAggregator
-            var groupedWatchers: [TradeAggregator: [Watcher]] = Dictionary(grouping: watchers.values) { $0.tradeAggregator }
+            var groupedWatchers: OrderedDictionary<TradeAggregator, [Watcher]> = OrderedDictionary(grouping: watchers.values) { $0.tradeAggregator }
             
-            // Sort watchers within each group
             for (aggregator, watchers) in groupedWatchers {
                 groupedWatchers[aggregator] = watchers.sorted { lhs, rhs in
                     if lhs.contract.type != rhs.contract.type {
@@ -47,7 +46,10 @@ import TradingStrategy
                 }
             }
             
-            return groupedWatchers
+            let sortedGroupedWatchers = OrderedDictionary(
+                uniqueKeysWithValues: groupedWatchers.sorted(by: { $0.key.id < $1.key.id })
+            )
+            return sortedGroupedWatchers
         }
     }
     

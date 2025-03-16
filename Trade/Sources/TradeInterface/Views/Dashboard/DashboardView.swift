@@ -169,16 +169,28 @@ struct DashboardView: View {
     func aggregatorSettings(_ aggregator: TradeAggregator) -> some View {
         HStack {
             Checkbox(label: "Auto Entry", checked: aggregator.isTradeEntryEnabled)
-                .onTapGesture { aggregator.isTradeEntryEnabled.toggle() }
+                .onTapGesture {
+                    aggregator.isTradeEntryEnabled.toggle()
+                    trades.selectedWatcher = UUID().uuidString
+                }
             Divider()
             Checkbox(label: "Auto Exit", checked: aggregator.isTradeExitEnabled)
-                .onTapGesture { aggregator.isTradeExitEnabled.toggle() }
+                .onTapGesture {
+                    aggregator.isTradeExitEnabled.toggle()
+                    trades.selectedWatcher = UUID().uuidString
+                }
             Divider()
             Checkbox(label: "Entry Alert", checked: aggregator.isTradeEntryNotificationEnabled)
-                .onTapGesture { aggregator.isTradeEntryNotificationEnabled.toggle() }
+                .onTapGesture {
+                    aggregator.isTradeEntryNotificationEnabled.toggle()
+                    trades.selectedWatcher = UUID().uuidString
+                }
             Divider()
             Checkbox(label: "Exit Alert", checked: aggregator.isTradeExitNotificationEnabled)
-                .onTapGesture { aggregator.isTradeExitNotificationEnabled.toggle() }
+                .onTapGesture {
+                    aggregator.isTradeExitNotificationEnabled.toggle()
+                    trades.selectedWatcher = UUID().uuidString
+                }
             Divider()
             Divider()
             Checkbox(label: "Sound", checked: alertSoundEnabled)
