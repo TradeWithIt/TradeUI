@@ -6,8 +6,6 @@ import TradingStrategy
 
 public struct StrategyQuoteView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
-    @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
-    @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     #if os(macOS)
@@ -27,45 +25,41 @@ public struct StrategyQuoteView: View {
     }
     
     public var body: some View {
-        VStack {
-            HStack(spacing: 0) {
-                if showActions {
-                    activeAssetsButtons(watcher: watcher)
-                }
-                GeometryReader { proxy in
-                    HStack(spacing: 0) {
-                        Text(strategyRegistry.strategyName(for: watcher.strategyType) ?? "Unknown")
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .frame(width: proxy.size.width / 7.0)
-                        
-                        Text("\(watcher.contract.symbol):\(watcher.interval.intervalString)")
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .frame(width: proxy.size.width / 7.0)
-                        
-                        tickView(
-                            title: isMarketOpen.isOpen ? "Open for" : "Closed for",
-                            value: formattedTimeInterval(isMarketOpen.timeUntilChange)
-                        )
-                        .foregroundColor(isMarketOpen.isOpen ? .green : .red)
-                        .frame(width: proxy.size.width / 7.0)
-                        
-                        tickView(title: "LAST", value: formatPrice(quote?.lastPrice))
-                            .frame(width: proxy.size.width / 7.0)
-                        tickView(title: "BID", value: formatPrice(quote?.bidPrice))
-                            .frame(width: proxy.size.width / 7.0)
-                        tickView(title: "ASK", value: formatPrice(quote?.askPrice))
-                            .frame(width: proxy.size.width / 7.0)
-                        tickView(title: "Volume", value: formatPrice(quote?.volume))
-                            .frame(width: proxy.size.width / 7.0)
-                    }
-                    .frame(height: proxy.size.height)
-                }
-                .frame(height: 32)
+        HStack(spacing: 0) {
+            if showActions {
+                activeAssetsButtons(watcher: watcher)
             }
-            
-            watcherSettings(watcher: watcher).frame(height: 32)
+            GeometryReader { proxy in
+                HStack(spacing: 0) {
+                    Text(strategyRegistry.strategyName(for: watcher.strategyType) ?? "Unknown")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .frame(width: proxy.size.width / 7.0)
+                    
+                    Text("\(watcher.contract.symbol):\(watcher.interval.intervalString)")
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .frame(width: proxy.size.width / 7.0)
+                    
+                    tickView(
+                        title: isMarketOpen.isOpen ? "Open for" : "Closed for",
+                        value: formattedTimeInterval(isMarketOpen.timeUntilChange)
+                    )
+                    .foregroundColor(isMarketOpen.isOpen ? .green : .red)
+                    .frame(width: proxy.size.width / 7.0)
+                    
+                    tickView(title: "LAST", value: formatPrice(quote?.lastPrice))
+                        .frame(width: proxy.size.width / 7.0)
+                    tickView(title: "BID", value: formatPrice(quote?.bidPrice))
+                        .frame(width: proxy.size.width / 7.0)
+                    tickView(title: "ASK", value: formatPrice(quote?.askPrice))
+                        .frame(width: proxy.size.width / 7.0)
+                    tickView(title: "Volume", value: formatPrice(quote?.volume))
+                        .frame(width: proxy.size.width / 7.0)
+                }
+                .frame(height: proxy.size.height)
+            }
+            .frame(height: 32)
         }
         .padding(.horizontal)
         .task { await fetchQuote() }
@@ -85,31 +79,6 @@ public struct StrategyQuoteView: View {
     }
     
     // MARK: - Views
-    func watcherSettings(watcher: Watcher) -> some View {
-        HStack {
-            Checkbox(label: "Auto Entry", checked: watcher.tradeAggregator.isTradeEntryEnabled)
-                .onTapGesture { watcher.tradeAggregator.isTradeEntryEnabled.toggle() }
-            Divider()
-            Checkbox(label: "Auto Exit", checked: watcher.tradeAggregator.isTradeExitEnabled)
-                .onTapGesture { watcher.tradeAggregator.isTradeExitEnabled.toggle() }
-            Divider()
-            Checkbox(label: "Entry Alert", checked: watcher.tradeAggregator.isTradeEntryNotificationEnabled)
-                .onTapGesture { watcher.tradeAggregator.isTradeEntryNotificationEnabled.toggle() }
-            Divider()
-            Checkbox(label: "Exit Alert", checked: watcher.tradeAggregator.isTradeExitNotificationEnabled)
-                .onTapGesture { watcher.tradeAggregator.isTradeExitNotificationEnabled.toggle() }
-            Divider()
-            Divider()
-            Checkbox(label: "Sound", checked: alertSoundEnabled)
-                .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
-            Divider()
-            Checkbox(label: "Message", checked: alertMessageEnabled)
-                .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
-            Spacer(minLength: 0)
-        }
-        .foregroundColor(.gray)
-        .frame(height: 12)
-    }
     
     func activeAssetsButtons(watcher: Watcher) -> some View {
         HStack {

@@ -6,6 +6,8 @@ import Runtime
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = "ORB"
+    @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
+    @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     
@@ -131,28 +133,63 @@ struct DashboardView: View {
     var charts: some View {
         VStack(alignment: .leading) {
             ForEach(Array(trades.watchersGroups()), id: \.key) { aggregator, watchers in
-                Section(header: Text("Trade Aggregator: \(aggregator.id)")
-                    .font(.headline)
-                    .padding(.leading)
-                    .foregroundColor(.blue)
-                ) {
-                    ForEach(watchers, id: \.id) { watcher in
-                        WatcherView(watcher: watcher, showChart: false, showActions: true)
-                            .border(watcher.contract.label == aggregator.contract.label ? Color.yellow : Color.clear, width: 1)
-                            .contentShape(Rectangle())
-                            .onDrag {
-                                NSItemProvider(object: watcher.id as NSString)
-                            }
-                            .onDrop(of: [.text], isTargeted: nil) { providers in
-                                handleDrop(providers: providers, targetWatcher: watcher)
-                            }
-                        Divider()
-                    }
-                }
-                .padding(.bottom, 10)
+                aggregatorSection(aggregator, watchers: watchers)
             }
         }
         .padding([.horizontal, .bottom])
+    }
+    
+    func aggregatorSection(_ aggregator: TradeAggregator, watchers: [Watcher]) -> some View {
+        Section(
+            header:
+                VStack(alignment: .leading) {
+                    Text("Trade Aggregator: \(aggregator.id)")
+                        .font(.headline)
+                        .padding(.leading)
+                        .foregroundColor(.blue)
+                    aggregatorSettings(aggregator)
+                }.frame(maxWidth: .infinity),
+            content:  {
+                ForEach(watchers, id: \.id) { watcher in
+                    WatcherView(watcher: watcher, showChart: false, showActions: true)
+                        .border(watcher.contract.label == aggregator.contract.label ? Color.yellow : Color.clear, width: 1)
+                        .contentShape(Rectangle())
+                        .onDrag {
+                            NSItemProvider(object: watcher.id as NSString)
+                        }
+                        .onDrop(of: [.text], isTargeted: nil) { providers in
+                            handleDrop(providers: providers, targetWatcher: watcher)
+                        }
+                    Divider()
+                }
+            })
+        .padding(.bottom, 10)
+    }
+    
+    func aggregatorSettings(_ aggregator: TradeAggregator) -> some View {
+        HStack {
+            Checkbox(label: "Auto Entry", checked: aggregator.isTradeEntryEnabled)
+                .onTapGesture { aggregator.isTradeEntryEnabled.toggle() }
+            Divider()
+            Checkbox(label: "Auto Exit", checked: aggregator.isTradeExitEnabled)
+                .onTapGesture { aggregator.isTradeExitEnabled.toggle() }
+            Divider()
+            Checkbox(label: "Entry Alert", checked: aggregator.isTradeEntryNotificationEnabled)
+                .onTapGesture { aggregator.isTradeEntryNotificationEnabled.toggle() }
+            Divider()
+            Checkbox(label: "Exit Alert", checked: aggregator.isTradeExitNotificationEnabled)
+                .onTapGesture { aggregator.isTradeExitNotificationEnabled.toggle() }
+            Divider()
+            Divider()
+            Checkbox(label: "Sound", checked: alertSoundEnabled)
+                .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
+            Divider()
+            Checkbox(label: "Message", checked: alertMessageEnabled)
+                .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
+            Spacer(minLength: 0)
+        }
+        .foregroundColor(.gray)
+        .frame(height: 12)
     }
     
     private func handleDrop(providers: [NSItemProvider], targetWatcher: Watcher) -> Bool {

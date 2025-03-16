@@ -176,8 +176,8 @@ public final class TradeAggregator: Hashable {
     public struct Request: Hashable {
         let isSimulation: Bool
         let watcherState: Watcher.WatcherStateActor
+        let contract: any Contract
         let interval: TimeInterval
-        private let contract: any Contract
         
         public func hash(into hasher: inout Hasher) {
             hasher.combine(contract.label)
