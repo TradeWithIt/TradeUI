@@ -78,7 +78,7 @@ struct DashboardView: View {
     
     func suggestionView(contract: any Contract, interval: TimeInterval) -> some View {
         SuggestionView(label: contract.label, symbol: contract.symbol) {
-            marketData(contract: contract, interval: interval)
+            marketData(contract: contract, interval: interval, strategyName: selectedStrategyName)
         }
     }
     
@@ -108,7 +108,7 @@ struct DashboardView: View {
             try? await Task.sleep(for: .milliseconds(200))
             await MainActor.run {
                 watchedAssets.forEach {
-                    self.marketData(contract: $0.instrument, interval: $0.interval)
+                    self.marketData(contract: $0.instrument, interval: $0.interval, strategyName: $0.strategyName)
                 }
             }
         }
@@ -138,9 +138,9 @@ struct DashboardView: View {
         .padding([.horizontal, .bottom])
     }
     
-    private func marketData(contract: any Contract, interval: TimeInterval) {
+    private func marketData(contract: any Contract, interval: TimeInterval, strategyName: String) {
         do {
-            guard let steategyType = strategyRegistry.strategy(forName: selectedStrategyName) else {
+            guard let steategyType = strategyRegistry.strategy(forName: strategyName) else {
                 print("🔴 Failed to find strategy \(selectedStrategyName)")
                 return
             }
@@ -151,7 +151,8 @@ struct DashboardView: View {
                     exchangeId: contract.exchangeId,
                     currency: contract.currency
                 ),
-                interval: interval
+                interval: interval,
+                strategyName: strategyName
             )
             watchedAssets.insert(asset)
             try trades.marketData(contract: contract, interval: interval, strategyType: steategyType)

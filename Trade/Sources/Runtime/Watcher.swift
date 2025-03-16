@@ -18,9 +18,10 @@ public class Watcher: Identifiable {
     }
     
     public var symbol: String { contract.symbol }
-    public var id: String { "\(contract.label):\(interval)" }
+    public var id: String { "\(strategyName)\(contract.label):\(interval)" }
     public var displayName: String { "\(symbol): \(interval.formatCandleTimeInterval())" }
     public let strategyType: Strategy.Type
+    public let strategyName: String
     
     public var isTradeEntryEnabled: Bool = false
     public var isTradeExitEnabled: Bool = false
@@ -49,6 +50,7 @@ public class Watcher: Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
+        strategyName: String,
         marketData: MarketData,
         marketOrder: MarketOrder?,
         fileProvider: CandleFileProvider,
@@ -58,6 +60,7 @@ public class Watcher: Identifiable {
         self.interval = interval
         self.userInfo = userInfo
         self.strategyType = strategyType
+        self.strategyName = strategyName
         self.marketOrder = marketOrder
         print("Initializing strategy of type:", strategyType)
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
@@ -71,6 +74,7 @@ public class Watcher: Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
+        strategyName: String,
         market: Market,
         fileProvider: CandleFileProvider,
         userInfo: [String: Any] = [:]
@@ -79,6 +83,7 @@ public class Watcher: Identifiable {
             contract: contract,
             interval: interval,
             strategyType: strategyType,
+            strategyName: strategyName,
             marketData: market,
             marketOrder: market,
             fileProvider: fileProvider,
@@ -90,6 +95,7 @@ public class Watcher: Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
+        strategyName: String,
         fileProvider: CandleFileProvider & MarketData,
         userInfo: [String: Any] = [:]
     ) throws {
@@ -97,6 +103,7 @@ public class Watcher: Identifiable {
             contract: contract,
             interval: interval,
             strategyType: strategyType,
+            strategyName: strategyName,
             marketData: fileProvider,
             marketOrder: nil,
             fileProvider: fileProvider,
@@ -271,8 +278,6 @@ public class Watcher: Identifiable {
         } else if let account = marketOrder?.account {
             print("✅ enterTradeIfStrategyIsValidated, symbol: \(symbol): intervl: \(interval)")
             
-            saveTradeRecordEntrySnapshot(entryBar: entryBar, buyingPower: account.buyingPower)
-            
             let units = strategy.unitCount(equity: account.buyingPower, feePerUnit: 50)
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
             guard units > 0 else { return }
@@ -287,24 +292,6 @@ public class Watcher: Identifiable {
                 trailStopPrice: initialStopLoss,
                 units: Double(units)
             ))
-        }
-    }
-    
-    private func saveTradeRecordEntrySnapshot(entryBar: any Klines, buyingPower: Double) {
-        print("💿 Saving trade record entry snapshot...")
-        Task {
-            let strategy = await watcherState.getStrategy()
-            let trade = TradeRecord(
-                id: UUID(),
-                symbol: contract.symbol,
-                strategy: String(describing: strategyType),
-                entryPrice: entryBar.priceClose,
-                buyingPowerOnEntry: buyingPower,
-                entryTime: Date(),
-                decision: entryBar.isLong ? "Long" : "Short",
-                entrySnapshot: strategy.candles.map { Candle(from: $0) },
-                exitSnapshot: nil
-            )
         }
     }
     

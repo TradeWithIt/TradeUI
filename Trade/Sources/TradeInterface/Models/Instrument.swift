@@ -4,9 +4,10 @@ import Brokerage
 public struct Asset: Codable, Hashable {
     var instrument: Instrument
     var interval: TimeInterval
+    var strategyName: String
     
     var id: String {
-        "\(instrument.label):\(interval)"
+        "\(strategyName)\(instrument.label):\(interval)"
     }
 }
 

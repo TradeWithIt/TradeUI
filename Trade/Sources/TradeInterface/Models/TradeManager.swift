@@ -75,13 +75,18 @@ import TradingStrategy
     
     @MainActor
     public func marketData<T: Strategy>(contract: any Contract, interval: TimeInterval, strategyType: T.Type) throws {
-        let assetId = "\(contract.label):\(interval)"
+        guard let strategyName = StrategyRegistry.shared.strategyName(for: strategyType) else {
+            print("🔴 Faile to read strategy name from Registry for strategy type:", String(describing: strategyType))
+            return
+        }
+        let assetId = "\(strategyName)\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else { return }
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
                 strategyType: strategyType,
+                strategyName: strategyName,
                 market: market,
                 fileProvider: fileProvider
             )

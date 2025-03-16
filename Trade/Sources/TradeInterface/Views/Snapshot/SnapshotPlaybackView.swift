@@ -47,7 +47,8 @@ public struct SnapshotPlaybackView: View {
             self.watcher = try Watcher(
                 contract: Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: ""),
                 interval: information?.interval ?? 60,
-                strategyType: SupriseBarStrategy.self,
+                strategyType: StrategyRegistry.shared.defaultStrategyType,
+                strategyName: StrategyRegistry.shared.defaultStrategyName ?? "",
                 fileProvider: fileProvider,
                 userInfo: [
                     MarketDataKey.snapshotFileURL.rawValue: url,

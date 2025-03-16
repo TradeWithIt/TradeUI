@@ -132,10 +132,18 @@ public struct StrategyQuoteView: View {
                     .aspectRatio(1, contentMode: .fit)
             }
             
-            Button(action: { Task { await cancelMarketData(watcher.contract, interval: watcher.interval) }}) {
-                Image(systemName: "xmark")
-                    .aspectRatio(1, contentMode: .fit)
-            }
+            Button(
+                action: {
+                    Task {
+                        guard let strategyName = strategyRegistry.strategyName(for: watcher.strategyType) else { return }
+                        await cancelMarketData(watcher.contract, interval: watcher.interval, strategyName: strategyName)
+                    }
+                },
+                label: {
+                    Image(systemName: "xmark")
+                        .aspectRatio(1, contentMode: .fit)
+                }
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -150,7 +158,7 @@ public struct StrategyQuoteView: View {
         }
     }
     
-    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval) async {
+    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval, strategyName: String) async {
         let asset = Asset(
             instrument: Instrument(
                 type: contract.type,
@@ -158,7 +166,8 @@ public struct StrategyQuoteView: View {
                 exchangeId: contract.exchangeId,
                 currency: contract.currency
             ),
-            interval: interval
+            interval: interval,
+            strategyName: strategyName
         )
         await MainActor.run {
             _ = watchedAssets.remove(asset)
