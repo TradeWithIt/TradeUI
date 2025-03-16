@@ -82,11 +82,13 @@ import TradingStrategy
         let assetId = "\(strategyName)\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else { return }
+            let agregator = TradeAggregator(marketOrder: market)
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
                 strategyType: strategyType,
                 strategyName: strategyName,
+                tradeAggregator: agregator,
                 market: market,
                 fileProvider: fileProvider
             )

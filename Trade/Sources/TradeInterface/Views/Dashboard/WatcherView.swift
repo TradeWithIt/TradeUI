@@ -56,6 +56,6 @@ public struct WatcherView: View {
         guard let watcher else { return }
         strategy = await watcher.watcherState.getStrategy()
         interval = watcher.interval
-        isMarketOpen = watcher.tradingHours.isMarketOpen()
+        isMarketOpen = await watcher.watcherState.getTradingHours()?.isMarketOpen() ?? (false, nil)
     }
 }

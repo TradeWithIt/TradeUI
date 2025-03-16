@@ -72,9 +72,6 @@ public struct StrategyQuoteView: View {
         .onReceive(timer) { _ in
             Task { await updateMarketOpenState() }
         }
-        .onChange(of: watcher.tradingHours, initial: true) {
-            Task { await updateMarketOpenState() }
-        }
     }
     
     // MARK: - Async Data Fetching
@@ -84,23 +81,23 @@ public struct StrategyQuoteView: View {
     }
     
     private func updateMarketOpenState() async {
-        self.isMarketOpen = watcher.tradingHours.isMarketOpen()
+        self.isMarketOpen = await watcher.watcherState.getTradingHours()?.isMarketOpen() ?? (false, nil)
     }
     
     // MARK: - Views
     func watcherSettings(watcher: Watcher) -> some View {
         HStack {
-            Checkbox(label: "Auto Entry", checked: watcher.isTradeEntryEnabled)
-                .onTapGesture { watcher.isTradeEntryEnabled.toggle() }
+            Checkbox(label: "Auto Entry", checked: watcher.tradeAggregator.isTradeEntryEnabled)
+                .onTapGesture { watcher.tradeAggregator.isTradeEntryEnabled.toggle() }
             Divider()
-            Checkbox(label: "Auto Exit", checked: watcher.isTradeExitEnabled)
-                .onTapGesture { watcher.isTradeExitEnabled.toggle() }
+            Checkbox(label: "Auto Exit", checked: watcher.tradeAggregator.isTradeExitEnabled)
+                .onTapGesture { watcher.tradeAggregator.isTradeExitEnabled.toggle() }
             Divider()
-            Checkbox(label: "Entry Alert", checked: watcher.isTradeEntryNotificationEnabled)
-                .onTapGesture { watcher.isTradeEntryNotificationEnabled.toggle() }
+            Checkbox(label: "Entry Alert", checked: watcher.tradeAggregator.isTradeEntryNotificationEnabled)
+                .onTapGesture { watcher.tradeAggregator.isTradeEntryNotificationEnabled.toggle() }
             Divider()
-            Checkbox(label: "Exit Alert", checked: watcher.isTradeExitNotificationEnabled)
-                .onTapGesture { watcher.isTradeExitNotificationEnabled.toggle() }
+            Checkbox(label: "Exit Alert", checked: watcher.tradeAggregator.isTradeExitNotificationEnabled)
+                .onTapGesture { watcher.tradeAggregator.isTradeExitNotificationEnabled.toggle() }
             Spacer(minLength: 0)
             Divider()
             Divider()

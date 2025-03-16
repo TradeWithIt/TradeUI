@@ -49,6 +49,7 @@ public struct SnapshotPlaybackView: View {
                 interval: information?.interval ?? 60,
                 strategyType: StrategyRegistry.shared.defaultStrategyType,
                 strategyName: StrategyRegistry.shared.defaultStrategyName ?? "",
+                tradeAggregator: TradeAggregator(),
                 fileProvider: fileProvider,
                 userInfo: [
                     MarketDataKey.snapshotFileURL.rawValue: url,

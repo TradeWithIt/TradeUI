@@ -51,7 +51,7 @@ public struct ORBStrategy: Strategy {
     
     // MARK: - Position Manager & Trade Decision
     
-    public func unitCount(equity: Double, feePerUnit cost: Double) -> Int {
+    public func unitCount(entryBar: Klines, equity: Double, feePerUnit cost: Double) -> Int {
         let riskPerTrade = equity * 0.01  // Risking 1% per trade
         let tradeCost = cost * 2  // Considering buy & sell cost
         return max(Int(riskPerTrade / tradeCost), 0)
