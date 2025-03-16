@@ -1,4 +1,5 @@
 import Foundation
+import TradeWithIt
 import TradingStrategy
 
 /// A registry for dynamically registering and retrieving trading strategies.
