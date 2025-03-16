@@ -44,12 +44,13 @@ public struct SnapshotPlaybackView: View {
         guard let url = node?.url else { return }
         let information = node?.name.decodeFileName()
         do {
+            let contract = Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: "")
             self.watcher = try Watcher(
-                contract: Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: ""),
+                contract: contract,
                 interval: information?.interval ?? 60,
                 strategyType: StrategyRegistry.shared.defaultStrategyType,
                 strategyName: StrategyRegistry.shared.defaultStrategyName ?? "",
-                tradeAggregator: TradeAggregator(),
+                tradeAggregator: TradeAggregator(contract: contract),
                 fileProvider: fileProvider,
                 userInfo: [
                     MarketDataKey.snapshotFileURL.rawValue: url,

@@ -1,19 +1,51 @@
 import Foundation
 import Brokerage
 
-public final class TradeAggregator {
+public final class TradeAggregator: Hashable {
     public var isTradeEntryEnabled: Bool = false
     public var isTradeExitEnabled: Bool = false
     public var isTradeEntryNotificationEnabled: Bool = true
     public var isTradeExitNotificationEnabled: Bool = true
+    public var minConfirmations: Int = 1
     
+    public let id = UUID()
+    public let contract: any Contract
     private var marketOrder: MarketOrder?
+    private var tradeSignals: Set<Request> = []
+    private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
     
-    public init(marketOrder: MarketOrder? = nil) {
+    public init(contract: any Contract, marketOrder: MarketOrder? = nil) {
         self.marketOrder = marketOrder
+        self.contract = contract
     }
     
-    public func enterTradeIfStrategyIsValidated(_ request: Request) async {
+    public func registerTradeSignal(_ request: Request) async {
+        let strategy = await request.watcherState.getStrategy()
+        if strategy.patternIdentified {
+            let contract = contract.label
+            let count = tradeQueue.sync(flags: .barrier) { [weak self] in
+                self?.tradeSignals.insert(request)
+                return self?.tradeSignals.count ?? 0
+            }
+            
+            if count >= minConfirmations {
+                print("✅ Confirmed trade entry for \(contract) with \(minConfirmations) strategies.")
+                await enterTradeIfStrategyIsValidated(request)
+                tradeQueue.sync(flags: .barrier) { [weak self] in
+                    self?.tradeSignals = []
+                }
+            } else {
+                print("⏳ Waiting for more confirmations for \(contract): \(tradeSignals.count)/\(minConfirmations)")
+            }
+        } else {
+            tradeQueue.sync(flags: .barrier) { [weak self] in
+                _ = self?.tradeSignals.remove(request)
+            }
+        }
+        await manageActiveTrade(request)
+    }
+    
+    private func enterTradeIfStrategyIsValidated(_ request: Request) async {
         guard !Task.isCancelled else { return }
         let hasNoActiveTrade = await request.watcherState.getActiveTrade() == nil
         guard hasNoActiveTrade else { return }
@@ -82,7 +114,7 @@ public final class TradeAggregator {
         guard isTradeEntryEnabled else { return }
         do {
             try marketOrder?.makeLimitWithTrailingStopOrder(
-                contract: request.contract,
+                contract: contract,
                 action: trade.entryBar.isLong ? .buy : .sell,
                 price: trade.price,
                 trailStopPrice: trade.trailStopPrice,
@@ -93,7 +125,7 @@ public final class TradeAggregator {
         }
     }
     
-    public func manageActiveTrade(_ request: Request) async {
+    private func manageActiveTrade(_ request: Request) async {
         guard !Task.isCancelled else { return }
         let strategy = await request.watcherState.getStrategy()
         
@@ -115,10 +147,10 @@ public final class TradeAggregator {
             await request.watcherState.updateActiveTrade(nil)
         } else {
             guard let account = marketOrder?.account else { return }
-            guard let position = account.positions.first(where: { $0.label == request.contract.label }) else { return }
+            guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
             do {
                 try marketOrder?.makeLimitOrder(
-                    contract: request.contract,
+                    contract: contract,
                     action: activeTrade.entryBar.isLong ? .sell : .buy,
                     price: position.averageCost,
                     quantity: position.quantity
@@ -130,13 +162,31 @@ public final class TradeAggregator {
         }
     }
     
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(contract.label)
+        hasher.combine(id)
+    }
+    
+    public static func == (lhs: TradeAggregator, rhs: TradeAggregator) -> Bool {
+        lhs.id == rhs.id
+    }
+    
     // MARK: Types
     
-    public struct Request {
+    public struct Request: Hashable {
         let isSimulation: Bool
         let watcherState: Watcher.WatcherStateActor
-        let contract: any Contract
         let interval: TimeInterval
+        private let contract: any Contract
+        
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(contract.label)
+            hasher.combine(interval)
+        }
+        
+        public static func == (lhs: Request, rhs: Request) -> Bool {
+            return lhs.contract.label == rhs.contract.label && lhs.interval == rhs.interval
+        }
     }
 }
 

@@ -129,14 +129,46 @@ struct DashboardView: View {
     }
     
     var charts: some View {
-        VStack {
-            ForEach(trades.sortedWatchers(), id: \.id) { watcher in
-                WatcherView(watcher: watcher, showChart: false, showActions: true)
-                Divider()
+        VStack(alignment: .leading) {
+            ForEach(Array(trades.watchersGroups()), id: \.key) { aggregator, watchers in
+                Section(header: Text("Trade Aggregator: \(aggregator.id)")
+                    .font(.headline)
+                    .padding(.leading)
+                    .foregroundColor(.blue)
+                ) {
+                    ForEach(watchers, id: \.id) { watcher in
+                        WatcherView(watcher: watcher, showChart: false, showActions: true)
+                            .border(watcher.contract.label == aggregator.contract.label ? Color.yellow : Color.clear, width: 1)
+                            .contentShape(Rectangle())
+                            .onDrag {
+                                NSItemProvider(object: watcher.id as NSString)
+                            }
+                            .onDrop(of: [.text], isTargeted: nil) { providers in
+                                handleDrop(providers: providers, targetWatcher: watcher)
+                            }
+                        Divider()
+                    }
+                }
+                .padding(.bottom, 10)
             }
         }
         .padding([.horizontal, .bottom])
     }
+    
+    private func handleDrop(providers: [NSItemProvider], targetWatcher: Watcher) -> Bool {
+            guard let provider = providers.first else { return false }
+            provider.loadObject(ofClass: NSString.self) { (id, error) in
+                guard let idString = id as? String else { return }
+                
+                DispatchQueue.main.async {
+                    if let draggedWatcher = trades.watchers[idString] {
+                        draggedWatcher.tradeAggregator = targetWatcher.tradeAggregator
+                        strategyRegistry.objectWillChange.send()
+                    }
+                }
+            }
+            return true
+        }
     
     private func marketData(contract: any Contract, interval: TimeInterval, strategyName: String) {
         do {

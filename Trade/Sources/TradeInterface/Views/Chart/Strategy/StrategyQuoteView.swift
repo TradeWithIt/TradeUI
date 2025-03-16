@@ -98,15 +98,14 @@ public struct StrategyQuoteView: View {
             Divider()
             Checkbox(label: "Exit Alert", checked: watcher.tradeAggregator.isTradeExitNotificationEnabled)
                 .onTapGesture { watcher.tradeAggregator.isTradeExitNotificationEnabled.toggle() }
-            Spacer(minLength: 0)
             Divider()
             Divider()
-            Spacer(minLength: 0)
             Checkbox(label: "Sound", checked: alertSoundEnabled)
                 .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
             Divider()
             Checkbox(label: "Message", checked: alertMessageEnabled)
                 .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
+            Spacer(minLength: 0)
         }
         .foregroundColor(.gray)
         .frame(height: 12)

@@ -176,15 +176,14 @@ public class Watcher: Identifiable {
                 }
                 
                 await watcherState.updateStrategy(newStrategy)
-                
-                let request = TradeAggregator.Request(
-                    isSimulation: isSimulation,
-                    watcherState: watcherState,
-                    contract: contract,
-                    interval: interval
+                await tradeAggregator?.registerTradeSignal(
+                    TradeAggregator.Request(
+                        isSimulation: isSimulation,
+                        watcherState: watcherState,
+                        contract: contract,
+                        interval: interval
+                    )
                 )
-                await tradeAggregator?.enterTradeIfStrategyIsValidated(request)
-                await tradeAggregator?.manageActiveTrade(request)
                 if let fileData = marketData as? MarketDataFileProvider,
                    let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
                     fileData.pull(url: url)

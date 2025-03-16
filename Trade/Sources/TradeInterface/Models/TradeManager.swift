@@ -26,20 +26,28 @@ import TradingStrategy
         }
     }
     
-    public func sortedWatchers() -> [Watcher] {
+    public func watchersGroups() -> [TradeAggregator: [Watcher]] {
         return lock.withLock {
-            watchers.values.sorted { lhs, rhs in
-                if lhs.contract.type != rhs.contract.type {
-                    return lhs.contract.type < rhs.contract.type
+            // Group watchers by their TradeAggregator
+            var groupedWatchers: [TradeAggregator: [Watcher]] = Dictionary(grouping: watchers.values) { $0.tradeAggregator }
+            
+            // Sort watchers within each group
+            for (aggregator, watchers) in groupedWatchers {
+                groupedWatchers[aggregator] = watchers.sorted { lhs, rhs in
+                    if lhs.contract.type != rhs.contract.type {
+                        return lhs.contract.type < rhs.contract.type
+                    }
+                    if lhs.contract.exchangeId != rhs.contract.exchangeId {
+                        return lhs.contract.exchangeId < rhs.contract.exchangeId
+                    }
+                    if lhs.contract.symbol != rhs.contract.symbol {
+                        return lhs.contract.symbol < rhs.contract.symbol
+                    }
+                    return lhs.interval < rhs.interval
                 }
-                if lhs.contract.exchangeId != rhs.contract.exchangeId {
-                    return lhs.contract.exchangeId < rhs.contract.exchangeId
-                }
-                if lhs.contract.symbol != rhs.contract.symbol {
-                    return lhs.contract.symbol < rhs.contract.symbol
-                }
-                return lhs.interval < rhs.interval
             }
+            
+            return groupedWatchers
         }
     }
     
@@ -82,7 +90,7 @@ import TradingStrategy
         let assetId = "\(strategyName)\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else { return }
-            let agregator = TradeAggregator(marketOrder: market)
+            let agregator = TradeAggregator(contract: contract, marketOrder: market)
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
