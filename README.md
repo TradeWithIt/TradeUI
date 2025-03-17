@@ -1,6 +1,6 @@
 # **TradeUI**
 
-![Swift](https://img.shields.io/badge/Swift-5.0-orange) ![Platforms](https://img.shields.io/badge/platforms-macOS%20|%20iOS%20|%20iPadOS%20|%20Linux%20|%20Windows-blue)
+![Swift](https://img.shields.io/badge/Swift-5.0-orange) ![Platforms](https://img.shields.io/badge/platforms-macOS-blue)
 
 ## **Overview**
 TradeUI is a comprehensive Swift-based trading interface that integrates real-time market data, executes trades, and provides an intuitive user experience for managing trading activities. This project is structured into modular components, ensuring scalability, maintainability, and flexibility for traders and developers alike.
@@ -85,6 +85,7 @@ let package = Package(
             dependencies: ["MyStrategyPackage"]),
     ]
 )
+```
 
 ✔️ This setup ensures that your strategy package will generate a .dylib file that TradeUI can dynamically load.
 
@@ -93,7 +94,7 @@ let package = Package(
 Step 2: Implement Your Strategy
 
 Inside your strategy package, implement your trading logic.
-
+```swift
 import Foundation
 import TradingStrategy
 
@@ -122,15 +123,14 @@ public struct ORBStrategy: Strategy {
         return false
     }
 }
-
-
+```
 
 ⸻
 
 Step 3: Expose Strategies to TradeUI
 
 To allow TradeUI to discover and load your strategy, you must provide C-compatible function exports:
-
+```swift
 import Foundation
 import TradingStrategy
 
@@ -162,22 +162,21 @@ class Box<T> {
     let value: T
     init(_ value: T) { self.value = value }
 }
-
-
+```
 
 ⸻
 
 Step 4: Compile and Add Your Strategy to TradeUI
 
 1️⃣ Build your strategy package:
-
+```
 swift build -c release
-
+```
 2️⃣ Locate the .dylib file inside .build/release/
 3️⃣ Copy it to TradeUI’s strategy directory:
-
+```
 cp .build/release/libMyStrategyPackage.dylib ~/Downloads/Strategies/
-
+```
 4️⃣ Restart TradeUI.
 
 ⸻
@@ -198,16 +197,15 @@ By using this software, you acknowledge that you have read and understood this d
 📌 Installation
 
 To set up TradeUI, clone the repository and install dependencies:
-
+```
 $ git clone https://github.com/TradeWithIt/TradeUI.git
 $ cd TradeUI
 $ swift build
-
+```
 Running in CLI Mode
-
+```
 $ swift run TradeUI --cli
-
-
+```
 
 ⸻
 
