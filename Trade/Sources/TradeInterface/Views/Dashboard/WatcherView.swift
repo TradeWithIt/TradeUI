@@ -25,14 +25,21 @@ public struct WatcherView: View {
     public var body: some View {
         if let watcher {
             VStack {
-                HStack {
-                    StrategyQuoteView(
-                        watcher: watcher,
-                        showActions: showActions
-                    )
-                    Spacer(minLength: 0)
-                    if let strategy {
-                        StrategyCheckList(strategy: strategy)
+                GeometryReader { geometry in
+                    HStack {
+                        StrategyQuoteView(
+                            watcher: watcher,
+                            showActions: showActions
+                        )
+                        .frame(width: geometry.size.width * 5.0/7.0, height: geometry.size.height)
+                        Group {
+                            if let strategy {
+                                StrategyCheckList(strategy: strategy)
+                            } else {
+                                Spacer()
+                            }
+                        }
+                        .frame(width: geometry.size.width * 2.0/7.0, height: geometry.size.height)
                     }
                 }
                 if showChart, let strategy, let interval {

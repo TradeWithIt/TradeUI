@@ -1,16 +1,10 @@
 import SwiftUI
 import TradeInterface
 import Runtime
-import TradeWithIt
 
 @main
 struct TradeApp: App {
     @State private var trades = TradeManager()
-    
-    init() {
-        StrategyRegistry.shared.register(strategyType: ORBStrategy.self, name: "ORB")
-        StrategyRegistry.shared.register(strategyType: SupriseBarStrategy.self, name: "Suprise Bar")
-    }
     
     var body: some Scene {
         #if os(macOS)

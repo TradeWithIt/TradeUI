@@ -30,7 +30,14 @@ public final class TradeAggregator: Hashable {
             
             if count >= minConfirmations {
                 print("✅ Confirmed trade entry for \(contract) with \(minConfirmations) strategies.")
-                await enterTradeIfStrategyIsValidated(request)
+                let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
+                    self?.tradeSignals.first(where: { $0.contract.label == contract })
+                }
+                guard let matchingRequest else {
+                    print("🔴 Failure to find matching request")
+                    return
+                }
+                await enterTradeIfStrategyIsValidated(matchingRequest)
                 tradeQueue.sync(flags: .barrier) { [weak self] in
                     self?.tradeSignals = []
                 }

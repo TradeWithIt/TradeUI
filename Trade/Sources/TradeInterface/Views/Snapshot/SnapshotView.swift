@@ -2,7 +2,6 @@ import SwiftUI
 import Runtime
 import Brokerage
 import TradingStrategy
-import TradeWithIt
 import SwiftUIComponents
 
 public struct SnapshotView: View {

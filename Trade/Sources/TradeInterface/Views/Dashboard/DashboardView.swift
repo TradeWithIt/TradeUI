@@ -33,8 +33,16 @@ struct DashboardView: View {
         )
         .toolbar {
             ToolbarItemGroup {
-                Button(action: { showTradeList.toggle() }) {
-                    Label("Trade History", systemImage: "externaldrive")
+                Checkbox(label: "Sound", checked: alertSoundEnabled)
+                    .fixedSize()
+                    .contentShape(Rectangle())
+                    .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
+                Checkbox(label: "Message", checked: alertMessageEnabled)
+                    .fixedSize()
+                    .contentShape(Rectangle())
+                    .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
+                Button(action: { Task {  viewModel.chooseStrategyFolder(registry: strategyRegistry) } }) {
+                    Label("Strategies", systemImage: "externaldrive")
                 }
                 StrategyPicker(selectedStrategyName: selectedStrategyBinding)
                 Button(action: { showIntervalPicker.toggle() }) {
@@ -62,10 +70,10 @@ struct DashboardView: View {
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.RTY, interval: interval)
+            suggestionView(contract: Instrument.APPL, interval: interval)
             suggestionView(contract: Instrument.NQ, interval: interval)
-            suggestionView(contract: Instrument.MES, interval: interval)
-            suggestionView(contract: Instrument.M2K, interval: interval)
+            suggestionView(contract: Instrument.ES, interval: interval)
+            suggestionView(contract: Instrument.VIX, interval: interval)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
@@ -73,6 +81,8 @@ struct DashboardView: View {
         }
         .task {
             Task {
+                viewModel.loadAllUserStrategies(into: strategyRegistry)
+                print(strategyRegistry.availableStrategies())
                 viewModel.updateMarketData(trades.market)
             }
         }
@@ -118,41 +128,46 @@ struct DashboardView: View {
     
     var detail: some View {
         VStack(alignment: .leading) {
-            Text("Watchers").font(.title2).padding()
-            Divider()
-            charts
+            VStack(alignment: .leading) {
+                Text("Watchers").font(.title2).padding(.leading)
+                charts
+            }.frame(maxHeight: .infinity)
             
-            Text("Portfolio").font(.title2).padding()
-            Divider()
-            OrderView(watcher: trades.watcher, account: account, show: .portfolio)
-            
+            if account?.orders.values.isEmpty == false || account?.positions.isEmpty == false {
+                VStack(alignment: .leading) {
+                    Text("Portfolio").font(.title2).padding(.leading)
+                    OrderView(watcher: trades.watcher, account: account, show: .portfolio)
+                }.frame(maxHeight: .infinity)
+
+            }
         }
+        .padding(.vertical)
         .frame(maxHeight: .infinity, alignment: .topLeading)
     }
     
     var charts: some View {
-        VStack(alignment: .leading) {
-            ForEach(Array(trades.watchersGroups()), id: \.key) { aggregator, watchers in
-                aggregatorSection(aggregator, watchers: watchers)
+        ScrollView(.vertical) {
+            VStack(alignment: .leading) {
+                ForEach(Array(trades.watchersGroups()), id: \.key) { aggregator, watchers in
+                    aggregatorSection(aggregator, watchers: watchers)
+                }
             }
+            .padding([.horizontal, .bottom])
         }
-        .padding([.horizontal, .bottom])
+        .scrollContentBackground(.hidden)
+        .frame(maxHeight: .infinity)
+        .padding()
     }
     
     func aggregatorSection(_ aggregator: TradeAggregator, watchers: [Watcher]) -> some View {
         Section(
-            header:
-                VStack(alignment: .leading) {
-                    Text("Trade Aggregator: \(aggregator.id)")
-                        .font(.headline)
-                        .padding(.leading)
-                        .foregroundColor(.blue)
-                    aggregatorSettings(aggregator)
-                }.frame(maxWidth: .infinity),
+            header: aggregatorSectionHeader(aggregator, watchers: watchers),
             content:  {
                 ForEach(watchers, id: \.id) { watcher in
                     WatcherView(watcher: watcher, showChart: false, showActions: true)
-                        .border(watcher.contract.label == aggregator.contract.label ? Color.yellow : Color.clear, width: 1)
+                        .if(watchers.count > 1 && watcher.contract.label == aggregator.contract.label) { view in
+                            view.badge(label: "⚡︎", color: .blue.opacity(0.6), alignment: .topLeading)
+                        }
                         .contentShape(Rectangle())
                         .onDrag {
                             NSItemProvider(object: watcher.id as NSString)
@@ -160,10 +175,29 @@ struct DashboardView: View {
                         .onDrop(of: [.text], isTargeted: nil) { providers in
                             handleDrop(providers: providers, targetWatcher: watcher)
                         }
-                    Divider()
                 }
             })
         .padding(.bottom, 10)
+    }
+    
+    @ViewBuilder
+    func aggregatorSectionHeader(_ aggregator: TradeAggregator, watchers: [Watcher]) -> some View {
+        if watchers.count > 1 {
+            HStack {
+                Text("Will Trade: \(aggregator.contract.label)")
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                Divider()
+                aggregatorSettings(aggregator)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom)
+        } else {
+            VStack {
+                Divider()
+                aggregatorSettings(aggregator)
+            }
+        }
     }
     
     func aggregatorSettings(_ aggregator: TradeAggregator) -> some View {
@@ -191,13 +225,6 @@ struct DashboardView: View {
                     aggregator.isTradeExitNotificationEnabled.toggle()
                     trades.selectedWatcher = UUID().uuidString
                 }
-            Divider()
-            Divider()
-            Checkbox(label: "Sound", checked: alertSoundEnabled)
-                .onTapGesture { alertSoundEnabled = !alertSoundEnabled }
-            Divider()
-            Checkbox(label: "Message", checked: alertMessageEnabled)
-                .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
             Spacer(minLength: 0)
         }
         .foregroundColor(.gray)

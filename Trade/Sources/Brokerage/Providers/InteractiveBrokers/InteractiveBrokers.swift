@@ -20,7 +20,7 @@ public class InteractiveBrokers: Market {
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
 //    let client = IBClient.paper(id: 0, type: .gateway)
-    let client = IBClient.paper(id: 0, type: .workstation)
+    let client = IBClient.paper(id: 0, type: .gateway)
     private let queue = DispatchQueue(label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
     private var _subscriptions: [AnyCancellable] = []
     private var _accounts: [String: Account] = [:]

@@ -43,6 +43,7 @@ struct OrderView: View {
                 orderList
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
     
@@ -76,7 +77,7 @@ struct OrderView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     var positionList: some View {
@@ -110,7 +111,7 @@ struct OrderView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     var order: some View {

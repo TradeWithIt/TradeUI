@@ -1,14 +1,14 @@
 import Foundation
-import TradeWithIt
 import TradingStrategy
 
 /// A registry for dynamically registering and retrieving trading strategies.
 @MainActor
 public final class StrategyRegistry: ObservableObject {
     public static let shared = StrategyRegistry()
-    public var defaultStrategyType: Strategy.Type = ORBStrategy.self
+    public var defaultStrategyType: Strategy.Type?
     public var defaultStrategyName: String? {
-        strategyName(for: defaultStrategyType)
+        guard let type = defaultStrategyType else { return nil }
+        return strategyName(for: type)
     }
     
     /// Holds registered strategy types by name.
@@ -30,5 +30,9 @@ public final class StrategyRegistry: ObservableObject {
     /// Registers a strategy by providing its type and a unique name.
     public func register<T: Strategy>(strategyType type: T.Type, name: String) {
         strategies[name] = type
+    }
+    
+    public func reset() {
+        strategies = [:]
     }
 }

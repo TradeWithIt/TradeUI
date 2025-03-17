@@ -80,7 +80,7 @@ struct AccountSummaryView: View {
         }
         .padding()
         .onAppear {
-            tempPhoneNumber = messageRecipient ?? ""
+            tempPhoneNumber = messageRecipient
         }
     }
 

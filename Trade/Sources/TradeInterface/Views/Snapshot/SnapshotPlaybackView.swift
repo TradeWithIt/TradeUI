@@ -2,7 +2,6 @@ import SwiftUI
 import Runtime
 import Brokerage
 import TradingStrategy
-import TradeWithIt
 
 public struct SnapshotPlaybackView: View {
     @Environment(\.presentationMode) var presentationMode
@@ -41,15 +40,19 @@ public struct SnapshotPlaybackView: View {
     }
     
     private func runSimulation() {
-        guard let url = node?.url else { return }
+        guard
+            let strategyType = StrategyRegistry.shared.defaultStrategyType,
+            let strategyName = StrategyRegistry.shared.defaultStrategyName,
+            let url = node?.url
+        else { return }
         let information = node?.name.decodeFileName()
         do {
             let contract = Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: "")
             self.watcher = try Watcher(
                 contract: contract,
                 interval: information?.interval ?? 60,
-                strategyType: StrategyRegistry.shared.defaultStrategyType,
-                strategyName: StrategyRegistry.shared.defaultStrategyName ?? "",
+                strategyType: strategyType,
+                strategyName: strategyName,
                 tradeAggregator: TradeAggregator(contract: contract),
                 fileProvider: fileProvider,
                 userInfo: [
