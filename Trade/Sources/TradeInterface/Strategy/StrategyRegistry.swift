@@ -5,10 +5,9 @@ import TradingStrategy
 @MainActor
 public final class StrategyRegistry: ObservableObject {
     public static let shared = StrategyRegistry()
-    public var defaultStrategyType: Strategy.Type?
+    public var defaultStrategyType: Strategy.Type = DoNothingStrategy.self
     public var defaultStrategyName: String? {
-        guard let type = defaultStrategyType else { return nil }
-        return strategyName(for: type)
+        return strategyName(for: defaultStrategyType)
     }
     
     /// Holds registered strategy types by name.

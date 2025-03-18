@@ -5,7 +5,7 @@ import TradingStrategy
 import SwiftUIComponents
 
 public struct SnapshotView: View {
-    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = "ORB"
+    @AppStorage("selected.strategy.same") private var selectedStrategyName: String = "Viewing only"
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var strategyRegistry: StrategyRegistry

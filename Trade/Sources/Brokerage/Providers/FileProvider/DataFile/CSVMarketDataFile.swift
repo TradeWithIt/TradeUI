@@ -6,8 +6,8 @@ public final class CSVMarketDataFile: MarketDataFile {
     private let subject = PassthroughSubject<CandleData, Never>()
     private var fileHandle: FileHandle?
     private var symbol: String = ""
-    private var barInterval: TimeInterval = 0
-    private var interval: TimeInterval = 0
+    private var barInterval: TimeInterval = 60
+    private var interval: TimeInterval = 60
     private var delimiter: String = ";"
     
     public init(fileUrl: URL) {
@@ -24,7 +24,7 @@ public final class CSVMarketDataFile: MarketDataFile {
             let line = lineData.toString()
             let components = line?.split(separator: delimiter).map { String($0) } ?? []
             guard components.count >= 6,
-                  let timestamp = parseTimeInterval(components[0]),
+                  let _ = parseTimeInterval(components[0]),
                   let open = Double(components[2]),
                   let high = Double(components[3]),
                   let low = Double(components[4]),
@@ -37,7 +37,7 @@ public final class CSVMarketDataFile: MarketDataFile {
             }
             let volume: Double? = components.count >= 7 ? Double(components[6]) : nil
             let bar = Bar(
-                timeOpen: timestamp,
+                timeOpen: interval,
                 interval: barInterval,
                 priceOpen: open,
                 priceHigh: high,

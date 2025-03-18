@@ -6,6 +6,10 @@ import Runtime
 struct TradeApp: App {
     @State private var trades = TradeManager()
     
+    init() {
+        trades.loadAllUserStrategies(into: StrategyRegistry.shared)
+    }
+    
     var body: some Scene {
         #if os(macOS)
         MenuBarExtra {

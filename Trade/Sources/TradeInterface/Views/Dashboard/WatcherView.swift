@@ -42,6 +42,7 @@ public struct WatcherView: View {
                         .frame(width: geometry.size.width * 2.0/7.0, height: geometry.size.height)
                     }
                 }
+                .frame(height: 32)
                 if showChart, let strategy, let interval {
                     StrategyChart(
                         strategy: strategy,

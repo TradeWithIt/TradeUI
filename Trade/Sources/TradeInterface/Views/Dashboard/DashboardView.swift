@@ -1,13 +1,15 @@
 import SwiftUI
 import SwiftUIComponents
+import TradingStrategy
 import Brokerage
 import Runtime
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
-    @CodableAppStorage("selected.strategy.same") private var selectedStrategyName: String = "ORB"
+    @AppStorage("selected.strategy.same") private var selectedStrategyName: String = "Viewing only"
     @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
     @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
+    @AppStorage("selected.interval") private var interval: TimeInterval = 60
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     
@@ -15,7 +17,7 @@ struct DashboardView: View {
     @State private var account: Account?
     @State private var showTradeList = false
     @State private var showIntervalPicker = false
-    @State private var interval: TimeInterval = 300
+    
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     private var selectedStrategyBinding: Binding<String> {
@@ -41,7 +43,12 @@ struct DashboardView: View {
                     .fixedSize()
                     .contentShape(Rectangle())
                     .onTapGesture { alertMessageEnabled = !alertMessageEnabled }
-                Button(action: { Task {  viewModel.chooseStrategyFolder(registry: strategyRegistry) } }) {
+                Button(action: {
+                    Task {
+                        guard viewModel.chooseStrategyFolder(registry: strategyRegistry) else { return }
+                        trades.loadAllUserStrategies(into: strategyRegistry)
+                    }
+                }) {
                     Label("Strategies", systemImage: "externaldrive")
                 }
                 StrategyPicker(selectedStrategyName: selectedStrategyBinding)
@@ -80,11 +87,10 @@ struct DashboardView: View {
             account = trades.market.account
         }
         .task {
-            Task {
-                viewModel.loadAllUserStrategies(into: strategyRegistry)
-                print(strategyRegistry.availableStrategies())
-                viewModel.updateMarketData(trades.market)
-            }
+            await viewModel.loadForexEvents()
+        }
+        .task {
+            viewModel.updateMarketData(trades.market)
         }
     }
     
@@ -133,13 +139,23 @@ struct DashboardView: View {
                 charts
             }.frame(maxHeight: .infinity)
             
-            if account?.orders.values.isEmpty == false || account?.positions.isEmpty == false {
-                VStack(alignment: .leading) {
-                    Text("Portfolio").font(.title2).padding(.leading)
-                    OrderView(watcher: trades.watcher, account: account, show: .portfolio)
-                }.frame(maxHeight: .infinity)
-
+            TabView {
+                if account?.orders.values.isEmpty == false || account?.positions.isEmpty == false {
+                    VStack(alignment: .leading) {
+                        Text("Portfolio").font(.title2).padding(.leading)
+                        OrderView(watcher: trades.watcher, account: account, show: .portfolio)
+                    }
+                    .tabItem {
+                        Label("Orders", systemImage: "cart.fill")
+                    }
+                }
+                
+                EventsView(events: viewModel.events)
+                    .tabItem {
+                        Label("Events", systemImage: "calendar")
+                    }
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(.vertical)
         .frame(maxHeight: .infinity, alignment: .topLeading)
@@ -239,6 +255,7 @@ struct DashboardView: View {
                 DispatchQueue.main.async {
                     if let draggedWatcher = trades.watchers[idString] {
                         draggedWatcher.tradeAggregator = targetWatcher.tradeAggregator
+                        targetWatcher.tradeAggregator.minConfirmations += 1
                         strategyRegistry.objectWillChange.send()
                     }
                 }
@@ -248,10 +265,7 @@ struct DashboardView: View {
     
     private func marketData(contract: any Contract, interval: TimeInterval, strategyName: String) {
         do {
-            guard let steategyType = strategyRegistry.strategy(forName: strategyName) else {
-                print("🔴 Failed to find strategy \(selectedStrategyName)")
-                return
-            }
+            let steategyType: Strategy.Type = strategyRegistry.strategy(forName: strategyName) ?? DoNothingStrategy.self
             let asset = Asset(
                 instrument: Instrument(
                     type: contract.type,
@@ -263,7 +277,12 @@ struct DashboardView: View {
                 strategyName: strategyName
             )
             watchedAssets.insert(asset)
-            try trades.marketData(contract: contract, interval: interval, strategyType: steategyType)
+            try trades.marketData(
+                contract: contract,
+                interval: interval,
+                strategyName: strategyName,
+                strategyType: steategyType
+            )
         } catch {
             print("🔴 Failed to subscribe IB market data with error:", error)
         }

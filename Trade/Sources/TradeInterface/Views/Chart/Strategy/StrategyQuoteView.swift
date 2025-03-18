@@ -135,7 +135,11 @@ public struct StrategyQuoteView: View {
             strategyName: strategyName
         )
         await MainActor.run {
-            _ = watchedAssets.remove(asset)
+            var assetsToUpdate = watchedAssets
+            if let removed = assetsToUpdate.remove(asset) {
+                print("🟤 Removed watched asset:", removed, watchedAssets.count, assetsToUpdate.count)
+            }
+            watchedAssets = assetsToUpdate
         }
         trades.cancelMarketData(asset)
     }

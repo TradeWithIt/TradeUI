@@ -52,7 +52,7 @@ public class Watcher: Identifiable {
         self.strategyType = strategyType
         self.strategyName = strategyName
         self.tradeAggregator = tradeAggregator
-        print("Initializing strategy of type:", strategyType)
+        
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
         self.quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
         self.marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
@@ -184,6 +184,7 @@ public class Watcher: Identifiable {
                         interval: interval
                     )
                 )
+                
                 if let fileData = marketData as? MarketDataFileProvider,
                    let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
                     fileData.pull(url: url)

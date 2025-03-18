@@ -10,14 +10,13 @@ public extension InteractiveBrokers {
         }
         print("🚀 Start Listening: \(accountId)")
         do {
-            print("🔵 OpenOrders")
             try client.subscribeAccountSummary(client.nextRequestID, accountGroup: accountId)
             try client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
-            print("🔵 OpenOrders")
+            
             try client.requestOpenOrders()
             try client.requestAllOpenOrders()
             try client.requestExecutions(client.nextRequestID)
-            print("🔵 Positions")
+            
             try client.subscribePositions()
         } catch {
             print("Failed to Listen for Account updates with error: \(error)")
