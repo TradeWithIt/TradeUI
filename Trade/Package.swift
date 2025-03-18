@@ -59,6 +59,12 @@ let package = Package(
                 .product(name: "SwiftUIComponents", package: "SwiftUIComponents"),
                 .product(name: "TradingStrategy", package: "Strategy"),
                 .product(name: "ForexFactory", package: "ForexFactory"),
+            ],
+            linkerSettings: [
+                .linkedFramework("CoreGraphics"),
+                .linkedFramework("Foundation"),
+                .linkedFramework("UIKit", .when(platforms: [.iOS])),
+                .linkedFramework("AppKit", .when(platforms: [.macOS])),
             ]
         ),
     ]
