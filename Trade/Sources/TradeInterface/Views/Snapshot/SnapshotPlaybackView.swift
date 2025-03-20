@@ -20,6 +20,7 @@ public struct SnapshotPlaybackView: View {
         Group {
             if watcher != nil {
                 WatcherView(watcher: watcher)
+                    .onDisappear(perform: close)
             } else {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle())
@@ -31,13 +32,16 @@ public struct SnapshotPlaybackView: View {
         .overlay(alignment: .topTrailing) {
             #if !os(macOS)
             Button("Dismiss") {
-                if let watcher {
-                    fileProvider.unsubscribeMarketData(contract: watcher.contract, interval: watcher.interval)
-                }
+                close()
                 presentationMode.wrappedValue.dismiss()
             }.padding()
             #endif
         }
+    }
+    
+    private func close() {
+        guard let watcher else { return }
+        fileProvider.unsubscribeMarketData(contract: watcher.contract, interval: watcher.interval)
     }
     
     private func runSimulation() {
@@ -47,7 +51,7 @@ public struct SnapshotPlaybackView: View {
         let stratName = unknown == nil ? StrategyRegistry.shared.defaultStrategyName : selectedStrategyName
         let information = node?.name.decodeFileName()
         do {
-            let contract = Instrument(type: "", symbol: information?.symbol ?? "UNKNOW", exchangeId: "", currency: "")
+            let contract = Instrument(type: "", symbol: information?.symbol ?? url.lastPathComponent, exchangeId: "", currency: "")
             self.watcher = try Watcher(
                 contract: contract,
                 interval: information?.interval ?? 60,

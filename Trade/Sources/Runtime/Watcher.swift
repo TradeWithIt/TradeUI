@@ -27,13 +27,15 @@ public class Watcher: Identifiable {
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
     private var tradeTask: Task<Void, Never>?
-    private var lastScheduledEntryBarTime: TimeInterval?
     
     deinit {
         tradeAggregator = nil
         quoteTask?.cancel()
+        quoteTask = nil
         marketDataTask?.cancel()
+        marketDataTask = nil
         tradeTask?.cancel()
+        tradeTask = nil
     }
 
     public init(
@@ -167,13 +169,6 @@ public class Watcher: Identifiable {
                 
                 let bars = await updateBars(candlesData.bars, isSimulation: isSimulation)
                 let newStrategy = updateStrategy(bars: bars)
-                let strategy = await watcherState.getStrategy()
-                if strategy.patternIdentified,
-                    let timeOpen = strategy.candles.last?.timeOpen,
-                    timeOpen != bars.last?.timeOpen {
-                    print("✅ pattern was identified")
-                    saveCandles(fileProvider: fileProvider)
-                }
                 
                 await watcherState.updateStrategy(newStrategy)
                 await tradeAggregator?.registerTradeSignal(

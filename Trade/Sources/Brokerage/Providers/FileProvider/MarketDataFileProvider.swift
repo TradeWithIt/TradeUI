@@ -13,6 +13,7 @@ public class MarketDataFileProvider: MarketData {
     public var account: Account? = nil
     
     deinit {
+        activeSubscriptions.forEach { $0.close() }
         activeSubscriptions.removeAll()
     }
     
@@ -77,8 +78,9 @@ public class MarketDataFileProvider: MarketData {
     
     public func unsubscribeMarketData(contract: any Contract, interval: TimeInterval) {
         activeSubscriptions.removeAll(where: {
-            let path = $0.fileUrl.lastPathComponent
-            return path.contains("\(contract.symbol)-\(interval)")
+            let shouldRemove = $0.fileUrl.lastPathComponent.contains("\(contract.symbol)")
+            if shouldRemove { $0.close() }
+            return shouldRemove
         })
     }
     

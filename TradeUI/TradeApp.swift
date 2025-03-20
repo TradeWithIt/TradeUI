@@ -4,10 +4,12 @@ import Runtime
 
 @main
 struct TradeApp: App {
-    @State private var trades = TradeManager()
+    @State private var trades: TradeManager
     
     init() {
+        let trades = TradeManager()
         trades.loadAllUserStrategies(into: StrategyRegistry.shared)
+        _trades = State(initialValue: trades)
     }
     
     var body: some Scene {

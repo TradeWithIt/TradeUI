@@ -9,4 +9,5 @@ public protocol MarketDataFile {
     func loadCandleData() -> CandleData?
     // Notify data provider, client is ready for another signal
     func publish()
+    func close()
 }

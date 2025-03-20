@@ -12,6 +12,12 @@ public final class KlineMarketDataFile: MarketDataFile {
         self.fileUrl = fileUrl
     }
     
+    public func close() {
+        fileHandle?.closeFile()
+        fileHandle = nil
+        subject.send(completion: .finished)
+    }
+    
     public func publish() {
         guard let fileHandle = fileHandle else { return }
         if let lineData = fileHandle.readLine() {

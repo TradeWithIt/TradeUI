@@ -69,7 +69,7 @@ public final class TradeAggregator: Hashable {
                 units: Double(units)
             )
             await request.watcherState.updateActiveTrade(trade)
-            print("✅🟤 enter trade: ", trade)
+            print("🟤 enter trade: ", trade)
         } else if let account = marketOrder?.account {
             // check if
             print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): intervl: \(request.interval)")
@@ -142,17 +142,17 @@ public final class TradeAggregator: Hashable {
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
         
-        guard strategy.shouldExit(entryBar: activeTrade.entryBar) else { return }
-        
-        if isTradeExitNotificationEnabled {
+        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar)
+        let isLongTrade = activeTrade.entryBar.isLong
+        let wouldHitStopLoss = isLongTrade ? activeTrade.trailStopPrice >= recentBar.priceClose : activeTrade.trailStopPrice <= recentBar.priceClose
+        if shouldExit, isTradeExitNotificationEnabled {
             // TODO: Notify Exit
-            print("❌ Exiting trade at \(activeTrade), lastBar: \(recentBar)")
+            print("❌ Exiting trade at \(activeTrade), entryPrice: \(activeTrade.price) , exitPrice: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
         }
-        guard isTradeExitEnabled else { return }
         
-        if request.isSimulation {
+        if request.isSimulation, shouldExit || wouldHitStopLoss {
             await request.watcherState.updateActiveTrade(nil)
-        } else {
+        } else if shouldExit, isTradeExitEnabled {
             guard let account = marketOrder?.account else { return }
             guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
             do {

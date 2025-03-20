@@ -26,6 +26,12 @@ import OrderedCollections
         }
     }
     
+    public func removeAllWatchers() {
+        lock.withLock {
+            watchers.removeAll()
+        }
+    }
+    
     public func watchersGroups() -> OrderedDictionary<TradeAggregator, [Watcher]> {
         return lock.withLock {
             var groupedWatchers: OrderedDictionary<TradeAggregator, [Watcher]> = OrderedDictionary(grouping: watchers.values) { $0.tradeAggregator }
@@ -173,9 +179,8 @@ import OrderedCollections
 
         for file in files where file.hasSuffix(".dylib") {
             let fullPath = (strategyFolder as NSString).appendingPathComponent(file)
-
             let strategyNames = loadAvailableStrategies(from: fullPath)
-
+            print("🔵 loading: ", strategyNames, fullPath)
             for strategyName in strategyNames {
                 if let strategyType = loadStrategy(from: fullPath, strategyName: strategyName) {
                     registry.register(strategyType: strategyType, name: strategyName)

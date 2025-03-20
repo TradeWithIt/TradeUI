@@ -135,7 +135,22 @@ struct DashboardView: View {
     var detail: some View {
         VStack(alignment: .leading) {
             VStack(alignment: .leading) {
-                Text("Watchers").font(.title2).padding(.leading)
+                HStack {
+                    Text("Watchers").font(.title2).padding(.leading)
+                    Spacer()
+                    Button(
+                        action: {
+                            trades.removeAllWatchers()
+                            Task {
+                                await MainActor.run {
+                                    watchedAssets.removeAll()
+                                }
+                            }
+                        },
+                        label: { Text("Remove All") }
+                    )
+                }
+                .padding(.trailing)
                 charts
             }.frame(maxHeight: .infinity)
             
