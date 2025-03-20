@@ -64,7 +64,7 @@ extension Instrument {
     static var NQ: Instrument {
         Instrument(
             type: "FUT",
-            symbol: "NQH5",
+            symbol: "NQM5",
             exchangeId: "CME",
             currency: "USD"
         )
@@ -75,7 +75,7 @@ extension Instrument {
     static var MES: Instrument {
         Instrument(
             type: "FUT",
-            symbol: "MESH5",
+            symbol: "MESM5",
             exchangeId: "CME",
             currency: "USD"
         )
@@ -85,7 +85,7 @@ extension Instrument {
     static var ES: Instrument {
         Instrument(
             type: "FUT",
-            symbol: "ESH5",
+            symbol: "ESM5",
             exchangeId: "CME",
             currency: "USD"
         )
@@ -95,7 +95,7 @@ extension Instrument {
     static var M2K: Instrument {
         Instrument(
             type: "FUT",
-            symbol: "M2KH5",
+            symbol: "M2KM5",
             exchangeId: "CME",
             currency: "USD"
         )
@@ -105,7 +105,7 @@ extension Instrument {
     static var RTY: Instrument {
         Instrument(
             type: "FUT",
-            symbol: "RTYH5",
+            symbol: "RTYM5",
             exchangeId: "CME",
             currency: "USD"
         )
