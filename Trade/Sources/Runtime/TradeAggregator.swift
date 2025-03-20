@@ -1,5 +1,6 @@
 import Foundation
 import Brokerage
+import TradingStrategy
 
 public final class TradeAggregator: Hashable {
     public var isTradeEntryEnabled: Bool = false
@@ -14,9 +15,24 @@ public final class TradeAggregator: Hashable {
     private var tradeSignals: Set<Request> = []
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
     
-    public init(contract: any Contract, marketOrder: MarketOrder? = nil) {
+    private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
+    private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
+    
+    public init(
+        contract: any Contract,
+        marketOrder: MarketOrder? = nil,
+        tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
+        tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil
+    ) {
         self.marketOrder = marketOrder
         self.contract = contract
+        self.tradeEntryNotificationAction = tradeEntryNotificationAction
+        self.tradeExitNotificationAction = tradeExitNotificationAction
+    }
+    
+    deinit {
+        tradeEntryNotificationAction = nil
+        tradeExitNotificationAction = nil
     }
     
     public func registerTradeSignal(_ request: Request) async {
@@ -115,8 +131,7 @@ public final class TradeAggregator: Hashable {
         await request.watcherState.updateActiveTrade(trade)
         
         if isTradeEntryNotificationEnabled {
-            // TODO: Notify
-            print("✅✅ enter trade: ", trade)
+            tradeEntryNotificationAction?(trade, trade.entryBar)
         }
         guard isTradeEntryEnabled else { return }
         do {
@@ -146,7 +161,7 @@ public final class TradeAggregator: Hashable {
         let isLongTrade = activeTrade.entryBar.isLong
         let wouldHitStopLoss = isLongTrade ? activeTrade.trailStopPrice >= recentBar.priceClose : activeTrade.trailStopPrice <= recentBar.priceClose
         if shouldExit, isTradeExitNotificationEnabled {
-            // TODO: Notify Exit
+            tradeExitNotificationAction?(activeTrade, recentBar)
             print("❌ Exiting trade at \(activeTrade), entryPrice: \(activeTrade.price) , exitPrice: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
         }
         

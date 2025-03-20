@@ -101,7 +101,16 @@ import OrderedCollections
                 print("🔴 Watcher already exist for strategy: \(strategyName), strategy type:", String(describing: strategyType))
                 return
             }
-            let agregator = TradeAggregator(contract: contract, marketOrder: market)
+            let agregator = TradeAggregator(
+                contract: contract,
+                marketOrder: market,
+                tradeEntryNotificationAction: { (trade, recentBar) in
+                    TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
+                },
+                tradeExitNotificationAction: { (trade, recentBar) in
+                    TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
+                }
+            )
             let watcher = try Watcher(
                 contract: contract,
                 interval: interval,
