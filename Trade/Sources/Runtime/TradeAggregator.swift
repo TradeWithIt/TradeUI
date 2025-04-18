@@ -16,14 +16,14 @@ public final class TradeAggregator: Hashable {
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
     private var stats = TradeStats()
     
-    private var getNextTradingAlertsAction: (() -> Event?)?
+    private var getNextTradingAlertsAction: (() -> Annoucment?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     
     public init(
         contract: any Contract,
         marketOrder: MarketOrder? = nil,
-        getNextTradingAlertsAction: (() -> Event?)? = nil,
+        getNextTradingAlertsAction: (() -> Annoucment?)? = nil,
         tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
         tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil
     ) {
@@ -84,7 +84,7 @@ public final class TradeAggregator: Hashable {
                 entryBar: entryBar,
                 equity: 1_000_000,
                 feePerUnit: 50,
-                nextEvent: nil
+                nextAnnoucment: nil
             )
             let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) ?? 0
             let trade = Trade(
@@ -103,7 +103,7 @@ public final class TradeAggregator: Hashable {
                 entryBar: entryBar,
                 equity: account.buyingPower,
                 feePerUnit: 50,
-                nextEvent: nextEvent
+                nextAnnoucment: nextEvent
             )
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
             guard units > 0 else { return }
@@ -169,7 +169,7 @@ public final class TradeAggregator: Hashable {
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
         let nextEvent = getNextTradingAlertsAction?()
-        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextEvent: nextEvent)
+        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
         let isLongTrade = activeTrade.entryBar.isLong
         let wouldHitStopLoss = isLongTrade ? activeTrade.trailStopPrice >= recentBar.priceClose : activeTrade.trailStopPrice <= recentBar.priceClose
         if shouldExit, isTradeExitNotificationEnabled {

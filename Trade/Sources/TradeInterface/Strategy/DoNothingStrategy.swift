@@ -39,12 +39,12 @@ public struct DoNothingStrategy: Strategy {
         entryBar: any TradingStrategy.Klines,
         equity: Double,
         feePerUnit cost: Double,
-        nextEvent event: (any TradingStrategy.Event)?
+        nextAnnoucment annoucment: Annoucment?
     ) -> Int {
         return 0
     }
     
-    public func shouldExit(entryBar: Klines, nextEvent event: Event?) -> Bool {
+    public func shouldExit(entryBar: Klines, nextAnnoucment annoucment: Annoucment?) -> Bool {
         return true
     }
     
