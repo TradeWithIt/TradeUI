@@ -2,6 +2,10 @@ import Foundation
 import TradingStrategy
 
 public struct DoNothingStrategy: Strategy {
+    public var id = "com.view.only"
+    public var name = "Viewing only"
+    public var version: (major: Int, minor: Int, patch: Int) = (1, 0, 0)
+    
     public let charts: [[Klines]]
     public let levels: [Level]
     public let distribution: [[Phase]]
@@ -31,15 +35,20 @@ public struct DoNothingStrategy: Strategy {
 
     // MARK: - Position Manager & Trade Decision
 
-    public func unitCount(entryBar: Klines, equity: Double, feePerUnit cost: Double) -> Int {
+    public func shouldEnterWitUnitCount(
+        entryBar: any TradingStrategy.Klines,
+        equity: Double,
+        feePerUnit cost: Double,
+        nextEvent event: (any TradingStrategy.Event)?
+    ) -> Int {
         return 0
+    }
+    
+    public func shouldExit(entryBar: Klines, nextEvent event: Event?) -> Bool {
+        return true
     }
     
     public func adjustStopLoss(entryBar: Klines) -> Double? {
         return nil
-    }
-    
-    public func shouldExit(entryBar: Klines) -> Bool {
-        return true
     }
 }

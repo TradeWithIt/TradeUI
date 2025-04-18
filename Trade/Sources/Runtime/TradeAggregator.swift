@@ -14,23 +14,28 @@ public final class TradeAggregator: Hashable {
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
+    private var stats = TradeStats()
     
+    private var getNextTradingAlertsAction: (() -> Event?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     
     public init(
         contract: any Contract,
         marketOrder: MarketOrder? = nil,
+        getNextTradingAlertsAction: (() -> Event?)? = nil,
         tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
         tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil
     ) {
         self.marketOrder = marketOrder
         self.contract = contract
+        self.getNextTradingAlertsAction = getNextTradingAlertsAction
         self.tradeEntryNotificationAction = tradeEntryNotificationAction
         self.tradeExitNotificationAction = tradeExitNotificationAction
     }
     
     deinit {
+        getNextTradingAlertsAction = nil
         tradeEntryNotificationAction = nil
         tradeExitNotificationAction = nil
     }
@@ -45,7 +50,6 @@ public final class TradeAggregator: Hashable {
             }
             
             if count >= minConfirmations {
-                print("✅ Confirmed trade entry for \(contract) with \(minConfirmations) strategies.")
                 let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
                     self?.tradeSignals.first(where: { $0.contract.label == contract })
                 }
@@ -76,7 +80,12 @@ public final class TradeAggregator: Hashable {
         guard strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
         
         if request.isSimulation {
-            let units = strategy.unitCount(entryBar: entryBar, equity: 1_000_000, feePerUnit: 50)
+            let units = strategy.shouldEnterWitUnitCount(
+                entryBar: entryBar,
+                equity: 1_000_000,
+                feePerUnit: 50,
+                nextEvent: nil
+            )
             let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) ?? 0
             let trade = Trade(
                 entryBar: entryBar,
@@ -89,8 +98,13 @@ public final class TradeAggregator: Hashable {
         } else if let account = marketOrder?.account {
             // check if
             print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): intervl: \(request.interval)")
-            
-            let units = strategy.unitCount(entryBar: entryBar, equity: account.buyingPower, feePerUnit: 50)
+            let nextEvent = getNextTradingAlertsAction?()
+            let units = strategy.shouldEnterWitUnitCount(
+                entryBar: entryBar,
+                equity: account.buyingPower,
+                feePerUnit: 50,
+                nextEvent: nextEvent
+            )
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
             guard units > 0 else { return }
             
@@ -112,8 +126,6 @@ public final class TradeAggregator: Hashable {
     }
     
     private func evaluateMarketCoonditions(trade: Trade, request: Request) async {
-        // TODO: 1. Check for market alerts
-        
         // Is market open during liquid hours
         let marketOpen = await request.watcherState.getTradingHours()?.isMarketOpen()
         print("✅ evaluateMarketCoonditions: ", marketOpen as Any)
@@ -156,16 +168,20 @@ public final class TradeAggregator: Hashable {
             let recentBar = strategy.candles.last,
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
-        
-        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar)
+        let nextEvent = getNextTradingAlertsAction?()
+        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextEvent: nextEvent)
         let isLongTrade = activeTrade.entryBar.isLong
         let wouldHitStopLoss = isLongTrade ? activeTrade.trailStopPrice >= recentBar.priceClose : activeTrade.trailStopPrice <= recentBar.priceClose
         if shouldExit, isTradeExitNotificationEnabled {
             tradeExitNotificationAction?(activeTrade, recentBar)
-            print("❌ Exiting trade at \(activeTrade), entryPrice: \(activeTrade.price) , exitPrice: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
         }
         
         if request.isSimulation, shouldExit || wouldHitStopLoss {
+            let profit = activeTrade.entryBar.isLong
+            ? recentBar.priceClose - activeTrade.price
+            : activeTrade.price - recentBar.priceClose
+            print("❌ profit: \(profit) entry: \(activeTrade.price) , exit: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
+            stats.recordTrade(entry: activeTrade.price, exit: recentBar.priceClose, isLong: activeTrade.entryBar.isLong)
             await request.watcherState.updateActiveTrade(nil)
         } else if shouldExit, isTradeExitEnabled {
             guard let account = marketOrder?.account else { return }
@@ -177,6 +193,7 @@ public final class TradeAggregator: Hashable {
                     price: position.averageCost,
                     quantity: position.quantity
                 )
+                print("❌ Exiting trade at \(activeTrade), entryPrice: \(activeTrade.price) , exitPrice: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
                 await request.watcherState.updateActiveTrade(nil)
             } catch {
                 print("Something went wrong while exiting trade: \(error)")
@@ -214,4 +231,25 @@ public final class TradeAggregator: Hashable {
 
 public extension TradeAggregator.Request {
     var symbol: String { contract.symbol }
+}
+
+struct TradeStats {
+    var longTrades: Int = 0
+    var shortTrades: Int = 0
+    var longPnL: Double = 0
+    var shortPnL: Double = 0
+
+    mutating func recordTrade(entry: Double, exit: Double, isLong: Bool) {
+        let profit = isLong ? (exit - entry) : (entry - exit)
+
+        if isLong {
+            longTrades += 1
+            longPnL += profit
+        } else {
+            shortTrades += 1
+            shortPnL += profit
+        }
+
+        print("✅ \(isLong ? "Long" : "Short") trade: profit \(profit), entry \(entry), exit \(exit)")
+    }
 }

@@ -104,6 +104,10 @@ import OrderedCollections
             let agregator = TradeAggregator(
                 contract: contract,
                 marketOrder: market,
+                getNextTradingAlertsAction: { [weak self] in
+                    // TODO: Pass events
+                    return nil
+                },
                 tradeEntryNotificationAction: { (trade, recentBar) in
                     TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
                 },
@@ -200,6 +204,7 @@ import OrderedCollections
             }
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
+        registry.register(strategyType: SupriseBarStrategy.self, name: "Suprise Bar")
     }
     
     // MARK: Types
