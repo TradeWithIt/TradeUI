@@ -145,3 +145,13 @@ class ObservableString {
         self.value = initialValue
     }
 }
+
+extension ForexEvent: TradingStrategy.Annoucment {
+    public var interval: TimeInterval {
+        date.timeIntervalSince1970
+    }
+    
+    public var impact: TradingStrategy.Impact {
+        imp
+    }
+}
