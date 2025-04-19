@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TradingHour: Equatable {
+public struct TradingHour: Sendable, Equatable {
     public var open: Date
     public var close: Date
     public var status: String

@@ -1,7 +1,6 @@
 import Foundation
-import GRDB
 
-public struct TradeRecord: Codable, FetchableRecord, PersistableRecord, Identifiable {
+public struct TradeRecord: Sendable, Codable, Identifiable {
     public var id: UUID
     public var symbol: String
     public var strategy: String

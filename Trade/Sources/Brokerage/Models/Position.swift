@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Position {
+public struct Position: Sendable {
     public let type: String
     public let symbol: String
     public let exchangeId: String

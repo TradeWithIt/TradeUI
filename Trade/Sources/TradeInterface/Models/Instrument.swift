@@ -110,14 +110,4 @@ extension Instrument {
             currency: "USD"
         )
     }
-    
-    /// VIX
-    static var VIX: Instrument {
-        Instrument(
-            type: "IND",
-            symbol: "VIX",
-            exchangeId: "CBOEB",
-            currency: "USD"
-        )
-    }
 }

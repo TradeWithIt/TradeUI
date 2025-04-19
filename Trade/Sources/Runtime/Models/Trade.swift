@@ -1,7 +1,7 @@
 import Foundation
 import TradingStrategy
 
-public struct Trade {
+public struct Trade: Sendable {
     public var entryBar: Klines
     public var price: Double
     public var trailStopPrice: Double

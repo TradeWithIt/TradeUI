@@ -367,6 +367,7 @@ public class InteractiveBrokers: Market {
 
 extension IBContract: @retroactive Hashable {}
 extension IBContract: @retroactive Equatable {}
+extension IBContract: @retroactive @unchecked Sendable {}
 extension IBContract: Contract {
     public var type: String {
         self.securitiesType.rawValue

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct CandleData {
+public struct CandleData: Sendable {
     public var symbol: Symbol
     public var interval: TimeInterval
     public var bars: [Bar]
@@ -12,7 +12,7 @@ public struct CandleData {
     }
 }
 
-public struct Bar: Codable, Hashable {
+public struct Bar: Sendable, Codable, Hashable {
     public var timeOpen: TimeInterval
     public var interval: TimeInterval
 

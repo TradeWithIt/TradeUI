@@ -1,11 +1,11 @@
 import Foundation
 
-public enum OrderAction: String {
+public enum OrderAction: String, Sendable {
     case buy = "Buy"
     case sell = "Sell"
 }
 
-public protocol Order {
+public protocol Order: Sendable {
     var orderID: Int { get }
     var symbol: String { get }
     var orderAction: OrderAction { get }

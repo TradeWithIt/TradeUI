@@ -162,6 +162,7 @@ extension IBOrderExecutionEnd: OrderEvent {}
 extension IBOrderCompletion: OrderEvent {}
 extension IBOrderCompetionEnd: OrderEvent {}
 
+extension IBOrder: @retroactive @unchecked Sendable {}
 extension IBOrder: Order {
     public var symbol: String {  contract.localSymbol ?? contract.symbol }
     public var orderAction: OrderAction { self.action == .buy ? .buy : .sell }

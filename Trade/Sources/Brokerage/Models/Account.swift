@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Account {
+public struct Account: Sendable {
     public var availableFunds: Double
     public var buyingPower: Double
     public var currency: String?

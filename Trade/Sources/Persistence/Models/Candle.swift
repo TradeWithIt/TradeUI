@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Candle: Codable, Hashable {
+public struct Candle: Sendable, Codable, Hashable {
     public var timeOpen: TimeInterval
     public var interval: TimeInterval
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol Contract: Hashable {    
+public protocol Contract: Sendable, Hashable {    
     var type: String { get }
     var symbol: String { get }
     var exchangeId: String { get }

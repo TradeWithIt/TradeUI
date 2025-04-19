@@ -1,8 +1,8 @@
 import Foundation
 import IBKit
 
-public struct Quote: Equatable {
-    public enum Context: Int {
+public struct Quote: Sendable, Equatable {
+    public enum Context: Int, Sendable {
         case bidPrice
         case askPrice
         case lastPrice

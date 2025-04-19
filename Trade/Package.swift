@@ -17,7 +17,6 @@ let package = Package(
         .package(url: "https://github.com/shial4/SwiftUIComponents.git", branch: "main"),
         .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
         .package(url: "https://github.com/TradeWithIt/ForexFactory", branch: "main"),
-        .package(url: "https://github.com/groue/GRDB.swift.git", .upToNextMajor(from: "7.3.0")),
         
         // MARK: Trading Strategy
         .package(url: "https://github.com/TradeWithIt/Strategy.git", branch: "master"),
@@ -44,7 +43,7 @@ let package = Package(
         .target(
             name: "Persistence",
             dependencies: [
-                .product(name: "GRDB", package: "GRDB.swift"),
+                // .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
         

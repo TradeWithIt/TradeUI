@@ -80,7 +80,6 @@ struct DashboardView: View {
             suggestionView(contract: Instrument.APPL, interval: interval)
             suggestionView(contract: Instrument.NQ, interval: interval)
             suggestionView(contract: Instrument.ES, interval: interval)
-            suggestionView(contract: Instrument.VIX, interval: interval)
         }
         .searchable(text: $viewModel.symbol.value)
         .onReceive(timer) { _ in
