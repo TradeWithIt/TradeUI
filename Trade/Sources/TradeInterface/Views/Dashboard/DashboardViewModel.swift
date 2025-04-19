@@ -80,7 +80,7 @@ extension DashboardView {
         }
         
         @MainActor
-        func loadForexEvents() async {
+        func loadForexEvents() async -> [ForexEvent] {
             let cacheKey = "forexEventsCache"
             let lastFetchKey = "forexEventsLastFetch"
             
@@ -93,7 +93,7 @@ extension DashboardView {
                     let cachedEvents = try JSONDecoder().decode([ForexEvent].self, from: savedData)
                     events = cachedEvents
                     print("✅ Loaded cached Forex events from UserDefaults.")
-                    return
+                    return cachedEvents
                 } catch {
                     print("⚠️ Failed to decode cached Forex events, fetching new data.")
                 }
@@ -115,10 +115,11 @@ extension DashboardView {
                 UserDefaults.standard.set(Date(), forKey: lastFetchKey)
 
                 print("✅ Fetched new Forex events and cached them.")
-
+                return newEvents
             } catch {
                 print("🔴 Failure fetching forex events:", error)
             }
+            return []
         }
     }
 }
@@ -147,11 +148,16 @@ class ObservableString {
 }
 
 extension ForexEvent: TradingStrategy.Annoucment {
-    public var interval: TimeInterval {
+    public var timestamp: TimeInterval {
         date.timeIntervalSince1970
     }
     
     public var annoucmentImpact: TradingStrategy.AnnoucmentImpact {
-        imp
+        switch impact {
+        case .high: .high
+        case .medium: .medium
+        case .low: .low
+        case .other: .low
+        }
     }
 }

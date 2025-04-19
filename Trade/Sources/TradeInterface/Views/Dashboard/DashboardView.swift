@@ -86,7 +86,8 @@ struct DashboardView: View {
             account = trades.market.account
         }
         .task {
-            await viewModel.loadForexEvents()
+            let events = await viewModel.loadForexEvents()
+            trades.updateAnnoucments(events)
         }
         .task {
             viewModel.updateMarketData(trades.market)

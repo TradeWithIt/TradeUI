@@ -15,9 +15,12 @@ import OrderedCollections
     public let persistance: Persistence
     public let fileProvider: MarketDataFileProvider
     public private(set) var watchers: [String: Watcher] = [:]
-    var selectedWatcher: String?
+    
+    internal var selectedWatcher: String?
     
     private var isLookingUpSuggestions: Bool = false
+    private var annoucments: [Annoucment] = []
+    
     
     var watcher: Watcher? {
         guard let id = selectedWatcher else { return nil }
@@ -105,8 +108,8 @@ import OrderedCollections
                 contract: contract,
                 marketOrder: market,
                 getNextTradingAlertsAction: { [weak self] in
-                    // TODO: Pass events
-                    return nil
+                    guard let self else { return nil }
+                    return nextAnnoucment(in: annoucments)
                 },
                 tradeEntryNotificationAction: { (trade, recentBar) in
                     TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
@@ -127,6 +130,18 @@ import OrderedCollections
             watchers[assetId] = watcher
         }
     }
+    
+    public func updateAnnoucments(_ annoucments: [Annoucment]) {
+        self.annoucments = annoucments
+    }
+    
+    private func nextAnnoucment(after time: TimeInterval = Date().timeIntervalSince1970, in annoucments: [Annoucment]) -> Annoucment? {
+        annoucments
+            .filter { $0.timestamp > time }
+            .sorted { $0.timestamp < $1.timestamp }
+            .first
+    }
+
     
     // MARK: Load Dylibs Files and its Strategies
     

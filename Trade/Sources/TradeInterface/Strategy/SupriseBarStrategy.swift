@@ -240,8 +240,8 @@ public struct SupriseBarStrategy: Strategy {
     ) -> Int {
         // If entry bar is the annoucment bar, we do not enter.
         if let annoucment,
-           annoucment.interval > entryBar.timeOpen,
-           annoucment.interval < (entryBar.timeOpen + entryBar.interval) {
+           annoucment.timestamp > entryBar.timeOpen,
+           annoucment.timestamp < (entryBar.timeOpen + entryBar.interval) {
             return 0
         }
         
@@ -292,9 +292,9 @@ public struct SupriseBarStrategy: Strategy {
         else { return false }
         
         // If next bar has annoucment, we exit
-        if let annoucment, annoucment.impact == .high,
-           annoucment.interval > latestBar.timeOpen,
-           annoucment.interval < (latestBar.timeOpen + latestBar.interval * 2) {
+        if let annoucment, annoucment.annoucmentImpact == .high,
+           annoucment.timestamp > latestBar.timeOpen,
+           annoucment.timestamp < (latestBar.timeOpen + latestBar.interval * 2) {
             return true
         }
         
