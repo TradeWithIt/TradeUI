@@ -4,7 +4,7 @@ import TradingStrategy
 import AppKit
 import SwiftUIComponents
 
-public class TradeAlertHandler {
+public class TradeAlertHandler: @unchecked Sendable {
     public static let shared = TradeAlertHandler()
     
     public func sendAlert(_ trade: Trade, recentBar: Klines) {

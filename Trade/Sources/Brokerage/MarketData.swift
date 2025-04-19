@@ -6,7 +6,7 @@ public enum MarketDataKey: String {
     case snapshotFileURL = "snapshot.file.url"
 }
 
-public protocol MarketData {
+public protocol MarketData: Sendable {
     init()
     /// Connect Service
     func connect() throws

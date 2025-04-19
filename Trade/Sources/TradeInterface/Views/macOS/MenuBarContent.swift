@@ -63,7 +63,7 @@ public struct MenuBarContent: View {
     }
     
     class AppDelegate: NSObject, NSApplicationDelegate {
-        var activationPolicy: NSApplication.ActivationPolicy {
+        @MainActor var activationPolicy: NSApplication.ActivationPolicy {
             NSApp.activationPolicy()
         }
         
@@ -76,7 +76,7 @@ public struct MenuBarContent: View {
             updateActivationPolicy(to: .prohibited)
         }
     
-        func updateActivationPolicy(to policy: NSApplication.ActivationPolicy) {
+        @MainActor func updateActivationPolicy(to policy: NSApplication.ActivationPolicy) {
                 NSApp.setActivationPolicy(policy)
                 NSApp.activate(ignoringOtherApps: true)
         }

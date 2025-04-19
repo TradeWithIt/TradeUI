@@ -5,7 +5,7 @@ import Persistence
 import TradingStrategy
 import SwiftUI
 
-public class Watcher: Identifiable {
+public final class Watcher: @unchecked Sendable, Identifiable {
     public private(set) var contract: any Contract
     public private(set) var interval: TimeInterval
     public private(set) var watcherState: WatcherStateActor

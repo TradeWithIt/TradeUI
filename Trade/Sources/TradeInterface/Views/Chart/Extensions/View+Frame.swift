@@ -1,8 +1,9 @@
 import SwiftUI
 
+
 private struct SizePreferenceKey: PreferenceKey {
     typealias Value = CGSize
-    static var defaultValue: CGSize = .zero
+    static let defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
         value = nextValue()
     }
@@ -10,7 +11,7 @@ private struct SizePreferenceKey: PreferenceKey {
 
 private struct RectPreferenceKey: PreferenceKey {
     typealias Value = CGRect
-    static var defaultValue: CGRect = .zero
+    static let defaultValue: CGRect = .zero
     static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
         value = nextValue()
     }

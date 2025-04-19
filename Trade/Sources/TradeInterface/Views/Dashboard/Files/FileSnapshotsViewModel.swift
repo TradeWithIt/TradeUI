@@ -5,7 +5,7 @@ import Brokerage
 import Runtime
 
 extension FileSnapshotsView {
-    public struct FileNode: Identifiable, Hashable, Codable {
+    public struct FileNode: Sendable, Identifiable, Hashable, Codable {
         public var id = UUID()
         public let name: String
         public let url: URL
@@ -13,7 +13,7 @@ extension FileSnapshotsView {
         var children: [FileNode]?
     }
     
-    @Observable public class ViewModel {
+    @Observable public class ViewModel: @unchecked Sendable {
         public struct SnapshotPreview: Hashable, Codable {
             public let file: FileNode
         }

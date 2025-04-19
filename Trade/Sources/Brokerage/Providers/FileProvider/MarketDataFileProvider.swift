@@ -1,14 +1,14 @@
 import Foundation
 import Combine
 
-public class MarketDataFileProvider: MarketData {
+public final class MarketDataFileProvider: @unchecked Sendable, MarketData {
     public enum Error: Swift.Error, LocalizedError {
         case missingDirectory(String)
         case missingFile(String)
         case wrongFileFormat(String)
     }
     
-    public private(set) var snapshotsDirectory: URL?
+    public let snapshotsDirectory: URL?
     private var activeSubscriptions: [MarketDataFile] = []
     public var account: Account? = nil
     

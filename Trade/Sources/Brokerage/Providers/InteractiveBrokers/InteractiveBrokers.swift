@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import IBKit
 
-public class InteractiveBrokers: Market {
+public class InteractiveBrokers: @unchecked Sendable, Market {
     private struct Asset: Hashable {
         var contract: any Contract
         var interval: TimeInterval
@@ -365,6 +365,7 @@ public class InteractiveBrokers: Market {
     }
 }
 
+extension IBContractDetails: @retroactive @unchecked Sendable {}
 extension IBContract: @retroactive Hashable {}
 extension IBContract: @retroactive Equatable {}
 extension IBContract: @retroactive @unchecked Sendable {}

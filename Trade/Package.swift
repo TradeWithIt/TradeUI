@@ -6,7 +6,7 @@ import Foundation
 let package = Package(
     name: "TradeApp",
     defaultLocalization: "en",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v17), .macOS(.v15)],
     products: [
         .library(
             name: "TradeInterface",

@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol Persistence {
+public protocol Persistence: Sendable {
     static var shared: Self { get }
     
     func saveTrade(_ trade: TradeRecord)

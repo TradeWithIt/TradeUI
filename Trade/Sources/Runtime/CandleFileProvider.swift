@@ -2,7 +2,7 @@ import Foundation
 import Brokerage
 import TradingStrategy
 
-public protocol CandleFileProvider {
+public protocol CandleFileProvider: Sendable {
     var snapshotsDirectory: URL? { get }
     func save(symbol: Symbol, interval: TimeInterval, bars: [Bar], strategyName: String) throws
     func loadFile(url: URL) throws -> CandleData?

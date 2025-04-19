@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-public final class KlineMarketDataFile: MarketDataFile {
+public final class KlineMarketDataFile: @unchecked Sendable, MarketDataFile {
     public let fileUrl: URL
     private let subject = PassthroughSubject<CandleData, Never>()
     private var fileHandle: FileHandle?

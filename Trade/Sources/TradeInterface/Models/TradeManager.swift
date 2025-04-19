@@ -7,7 +7,7 @@ import Combine
 import TradingStrategy
 import OrderedCollections
 
-@Observable public class TradeManager {
+@Observable public class TradeManager: @unchecked Sendable {
     private let lock: NIOLock = NIOLock()
     private var cancellable: AnyCancellable?
     
