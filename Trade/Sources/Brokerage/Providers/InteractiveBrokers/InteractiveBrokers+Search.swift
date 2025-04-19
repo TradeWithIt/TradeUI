@@ -61,7 +61,6 @@ extension InteractiveBrokers {
                 .map(\.data)
                 .decode(type: Product.Response.self, decoder: JSONDecoder())
                 .map { Array($0.products) }
-                .mapError { $0 as! Swift.Error }
                 .eraseToAnyPublisher()
         }
         
