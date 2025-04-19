@@ -151,7 +151,7 @@ extension ForexEvent: TradingStrategy.Annoucment {
         date.timeIntervalSince1970
     }
     
-    public var impact: TradingStrategy.Impact {
+    public var annoucmentImpact: TradingStrategy.AnnoucmentImpact {
         imp
     }
 }
